@@ -3,14 +3,16 @@
 import os
 from pathlib import Path
 import django_heroku
+from decouple import config
+
+SECRET_KEY = config('SECRET_KEY')
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-SECRET_KEY = 'tu-clave-secreta-aqui'
-
 DEBUG = True
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = ['findout-51402a9745ce.herokuapp.com', 'localhost']
+
 
 INSTALLED_APPS = [
     'django.contrib.admin',

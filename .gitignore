@@ -1,0 +1,28 @@
+# Ignorar el entorno virtual
+venv/
+
+# Ignorar el archivo .env que contiene variables de entorno sensibles
+.env
+
+# Ignorar bases de datos SQLite
+*.sqlite3
+
+# Ignorar archivos de migración
+**/migrations/*.pyc
+**/migrations/__pycache__/
+
+# Ignorar archivos de caché y compilados
+*.pyc
+__pycache__/
+
+# Ignorar configuraciones y archivos locales de IDEs
+.vscode/
+*.idea
+*.sublime-workspace
+*.sublime-project
+
+# Archivos de medios subidos (opcional, si no quieres rastrear subidas en Git)
+/media/
+
+# Ignorar archivos de almacenamiento de Django
+staticfiles/
