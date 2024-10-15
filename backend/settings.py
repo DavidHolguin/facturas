@@ -132,7 +132,7 @@ MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 # Configuración de AWS
 AWS_ACCESS_KEY_ID = 'tu_access_key_id'
 AWS_SECRET_ACCESS_KEY = 'tu_secret_access_key'
-AWS_STORAGE_BUCKET_NAME = 'tu_nombre_de_bucket'
+AWS_STORAGE_BUCKET_NAME = 'backendfindout'
 AWS_S3_REGION_NAME = 'us-east-1'
 AWS_S3_CUSTOM_DOMAIN = f'{AWS_STORAGE_BUCKET_NAME}.s3.amazonaws.com'
 AWS_S3_OBJECT_PARAMETERS = {
