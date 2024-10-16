@@ -27,19 +27,35 @@ class S3Helper:
         )
         self.bucket_name = settings.AWS_STORAGE_BUCKET_NAME
 
+    def clean_key(self, object_key):
+        """Limpia y normaliza la key del objeto."""
+        try:
+            # Decodificar la URL
+            key = urllib.parse.unquote(object_key)
+            
+            # Eliminar cualquier prefijo de URL de S3
+            key = key.replace(f'https://{self.bucket_name}.s3.amazonaws.com/', '')
+            key = key.replace(f'http://{self.bucket_name}.s3.amazonaws.com/', '')
+            
+            # Eliminar cualquier prefijo de media si existe
+            if key.startswith('media/'):
+                key = key[6:]  # Eliminar 'media/'
+                
+            return key
+        except Exception as e:
+            print(f"Error cleaning key: {str(e)}")
+            return object_key
+
     def generate_presigned_url(self, object_key, expiration=3600):
         try:
-            # Decodificar la URL por si viene codificada
-            object_key = urllib.parse.unquote(object_key)
-            # Eliminar el nombre del bucket y cualquier prefijo de la URL si existe
-            object_key = object_key.replace(f'{self.bucket_name}.s3.amazonaws.com/', '')
-            object_key = object_key.replace('media/', '')
+            clean_key = self.clean_key(object_key)
+            print(f"Generating presigned URL for key: {clean_key}")  # Debug log
             
             url = self.s3_client.generate_presigned_url(
                 'get_object',
                 Params={
                     'Bucket': self.bucket_name,
-                    'Key': object_key
+                    'Key': f"media/{clean_key}"  # Añadir el prefijo media/
                 },
                 ExpiresIn=expiration
             )
@@ -58,18 +74,24 @@ class CompanyViewSet(viewsets.ModelViewSet):
         context['request'] = self.request
         return context
 
-    @action(detail=False, methods=['get'], url_path='get-presigned-url')
+    @action(detail=False, methods=['get'], permission_classes=[AllowAny])
     def get_presigned_url(self, request):
-        object_key = request.query_params.get('key')
-        if not object_key:
-            return Response({'error': 'No key provided'}, status=400)
-        
-        s3_helper = S3Helper()
-        presigned_url = s3_helper.generate_presigned_url(object_key)
-        
-        if presigned_url:
-            return Response({'url': presigned_url})
-        return Response({'error': 'Failed to generate URL'}, status=500)
+        try:
+            object_key = request.query_params.get('key')
+            if not object_key:
+                return Response({'error': 'No key provided'}, status=400)
+            
+            print(f"Received request for key: {object_key}")  # Debug log
+            
+            s3_helper = S3Helper()
+            presigned_url = s3_helper.generate_presigned_url(object_key)
+            
+            if presigned_url:
+                return Response({'url': presigned_url})
+            return Response({'error': 'Failed to generate URL'}, status=500)
+        except Exception as e:
+            print(f"Error in get_presigned_url view: {str(e)}")  # Debug log
+            return Response({'error': str(e)}, status=500)
 
 class CategoryViewSet(viewsets.ModelViewSet):
     queryset = Category.objects.all()
