@@ -1,5 +1,6 @@
 from rest_framework import serializers
 from .models import Company, Category, Product, Order, OrderItem
+from django.conf import settings
 
 class CompanySerializer(serializers.ModelSerializer):
     profile_picture_url = serializers.SerializerMethodField()
@@ -11,12 +12,12 @@ class CompanySerializer(serializers.ModelSerializer):
 
     def get_profile_picture_url(self, obj):
         if obj.profile_picture:
-            return self.context['request'].build_absolute_uri(obj.profile_picture.url)
+            return f"https://{settings.AWS_S3_CUSTOM_DOMAIN}/{obj.profile_picture}"
         return None
 
     def get_cover_photo_url(self, obj):
         if obj.cover_photo:
-            return self.context['request'].build_absolute_uri(obj.cover_photo.url)
+            return f"https://{settings.AWS_S3_CUSTOM_DOMAIN}/{obj.cover_photo}"
         return None
 
 class CategorySerializer(serializers.ModelSerializer):
@@ -33,7 +34,7 @@ class ProductSerializer(serializers.ModelSerializer):
 
     def get_image_url(self, obj):
         if obj.image:
-            return self.context['request'].build_absolute_uri(obj.image.url)
+            return f"https://{settings.AWS_S3_CUSTOM_DOMAIN}/{obj.image}"
         return None
 
 class OrderItemSerializer(serializers.ModelSerializer):
