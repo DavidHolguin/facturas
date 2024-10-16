@@ -144,6 +144,7 @@ AWS_S3_OBJECT_PARAMETERS = {
 }
 
 # Asegúrate de que los objetos se carguen con permisos de lectura pública
+AWS_DEFAULT_ACL = 'public-read'
 AWS_BUCKET_ACL = 'public-read'
 AWS_S3_OBJECT_PARAMETERS = {
     'ACL': 'public-read',
