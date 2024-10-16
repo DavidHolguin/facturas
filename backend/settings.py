@@ -142,7 +142,7 @@ AWS_S3_OBJECT_PARAMETERS = {
     'CacheControl': 'max-age=86400',
 }
 AWS_DEFAULT_ACL = 'public-read'
-AWS_QUERYSTRING_AUTH = False
+
 
 DEFAULT_FILE_STORAGE = 'storages.backends.s3boto3.S3Boto3Storage'
 
@@ -153,4 +153,4 @@ django_heroku.settings(locals())
 
 # Asegúrate de que DEBUG sea False en producción
 if os.environ.get('DJANGO_ENV') == 'production':
-    DEBUG = False
+    DEBUG = True
