@@ -17,6 +17,11 @@ class CompanyViewSet(viewsets.ModelViewSet):
     serializer_class = CompanySerializer
     permission_classes = [AllowAny]  # Permite acceso a todos los usuarios
 
+    def get_serializer_context(self):
+        context = super().get_serializer_context()
+        context['request'] = self.request
+        return context
+
 class CategoryViewSet(viewsets.ModelViewSet):
     queryset = Category.objects.all()
     serializer_class = CategorySerializer
@@ -27,11 +32,20 @@ class ProductViewSet(viewsets.ModelViewSet):
     serializer_class = ProductSerializer
     permission_classes = [AllowAny] # Permite lectura para no autenticados
 
+    def get_serializer_context(self):
+        context = super().get_serializer_context()
+        context['request'] = self.request
+        return context
 
 class OrderViewSet(viewsets.ModelViewSet):
     queryset = Order.objects.all()
     serializer_class = OrderSerializer
     permission_classes = [IsAuthenticated] 
+
+    def get_serializer_context(self):
+        context = super().get_serializer_context()
+        context['request'] = self.request
+        return context
 
 class SearchView(APIView):
     def get(self, request):
@@ -40,8 +54,8 @@ class SearchView(APIView):
         products = Product.objects.filter(name__icontains=query)
         categories = Category.objects.filter(name__icontains=query)
 
-        company_serializer = CompanySerializer(companies, many=True)
-        product_serializer = ProductSerializer(products, many=True)
+        company_serializer = CompanySerializer(companies, many=True, context={'request': request})
+        product_serializer = ProductSerializer(products, many=True, context={'request': request})
         category_serializer = CategorySerializer(categories, many=True)
 
         results = (
@@ -76,6 +90,11 @@ class OrderViewSet(viewsets.ModelViewSet):
     queryset = Order.objects.all()
     serializer_class = OrderSerializer
     permission_classes = [IsAuthenticated]
+
+    def get_serializer_context(self):
+        context = super().get_serializer_context()
+        context['request'] = self.request
+        return context
 
     def create(self, request):
         data = request.data
