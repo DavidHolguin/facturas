@@ -1,14 +1,13 @@
-# marketplace/models.py
-
 from django.db import models
 from django.contrib.auth.models import User
 
 class Company(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE)
-    name = models.CharField(max_length=100)
+    name = models.CharField(max_length=100)  # Add missing closing parenthesis
     description = models.TextField()
-    profile_picture = models.ImageField(upload_to='company_profiles/', null=True, blank=True)
-    cover_photo = models.ImageField(upload_to='company_covers/', null=True, blank=True)
+
+    profile_picture = models.ImageField(upload_to='company_profiles/findoutpwa/', null=True, blank=True)
+    cover_photo = models.ImageField(upload_to='company_covers/findoutpwa/', null=True, blank=True)
     phone = models.CharField(max_length=20)
     address = models.TextField()
 
@@ -26,8 +25,9 @@ class Product(models.Model):
     category = models.ForeignKey(Category, on_delete=models.SET_NULL, null=True)
     name = models.CharField(max_length=100)
     description = models.TextField()
+
     price = models.DecimalField(max_digits=10, decimal_places=2)
-    image = models.ImageField(upload_to='products/', null=True, blank=True)
+    image = models.ImageField(upload_to='products/findoutpwa/', null=True, blank=True)
 
     def __str__(self):
         return self.name
@@ -50,11 +50,4 @@ class OrderItem(models.Model):
     def __str__(self):
         return f"{self.quantity} x {self.product.name}"
 
-class OrderItem(models.Model):
-    order = models.ForeignKey(Order, related_name='items', on_delete=models.CASCADE)
-    product = models.ForeignKey(Product, on_delete=models.CASCADE)
-    quantity = models.PositiveIntegerField(default=1)
-    price = models.DecimalField(max_digits=10, decimal_places=2)
-
-    def __str__(self):
-        return f"{self.quantity} x {self.product.name}"
+# Remove the duplicate OrderItem class definition
