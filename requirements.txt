@@ -9,6 +9,7 @@ cloudinary==1.41.0
 colorama==0.4.6
 Django==5.1
 django-cloudinary-storage==0.3.0
+django-cors-headers==4.5.0  # Cambiar a esta versión
 django-heroku==0.3.1
 djangorestframework==3.15.2
 djangorestframework-simplejwt==5.3.1
@@ -21,7 +22,7 @@ openai==0.27.0
 packaging==24.1
 pillow==10.4.0
 psycopg2==2.9.10
-python-decouple==3.8  # Añade esta línea
+python-decouple==3.8
 python-dotenv==1.0.1
 pytz==2024.2
 PyYAML==6.0.2
