@@ -135,14 +135,20 @@ AWS_SECRET_ACCESS_KEY = os.environ.get('AWS_SECRET_ACCESS_KEY')
 AWS_STORAGE_BUCKET_NAME = os.environ.get('AWS_STORAGE_BUCKET_NAME')
 AWS_S3_REGION_NAME = os.environ.get('AWS_S3_REGION_NAME')
 AWS_S3_FILE_OVERWRITE = False
-AWS_DEFAULT_ACL = None
+AWS_DEFAULT_ACL = 'public-read'  # Cambiado de None a 'public-read'
+AWS_QUERYSTRING_AUTH = False  # Desactiva la autenticación en las URLs
 
 AWS_S3_CUSTOM_DOMAIN = f'{AWS_STORAGE_BUCKET_NAME}.s3.amazonaws.com'
 AWS_S3_OBJECT_PARAMETERS = {
     'CacheControl': 'max-age=86400',
 }
-AWS_DEFAULT_ACL = 'public-read'
 
+# Asegúrate de que los objetos se carguen con permisos de lectura pública
+AWS_BUCKET_ACL = 'public-read'
+AWS_S3_OBJECT_PARAMETERS = {
+    'ACL': 'public-read',
+    'CacheControl': 'max-age=86400',
+}
 
 DEFAULT_FILE_STORAGE = 'storages.backends.s3boto3.S3Boto3Storage'
 
@@ -153,4 +159,4 @@ django_heroku.settings(locals())
 
 # Asegúrate de que DEBUG sea False en producción
 if os.environ.get('DJANGO_ENV') == 'production':
-    DEBUG = True
+    DEBUG = False  # Cambiado de True a False para producción
