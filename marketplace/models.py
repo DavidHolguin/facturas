@@ -1,19 +1,32 @@
 from django.db import models
 from django.contrib.auth.models import User
 from django.core.validators import MaxValueValidator, MinValueValidator
+from cloudinary_storage.storage import MediaCloudinaryStorage
+from cloudinary.models import CloudinaryField
 
 class Company(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE)
     name = models.CharField(max_length=100)  # Add missing closing parenthesis
     description = models.TextField()
 
-    profile_picture = models.ImageField(upload_to='company_profiles/findoutpwa/', null=True, blank=True)
-    cover_photo = models.ImageField(upload_to='company_covers/findoutpwa/', null=True, blank=True)
+    profile_picture = CloudinaryField(
+        'image',
+        folder='company_profiles/findoutpwa/',
+        null=True,
+        blank=True
+    )
+    cover_photo = CloudinaryField(
+        'image',
+        folder='company_covers/findoutpwa/',
+        null=True,
+        blank=True
+    )
     phone = models.CharField(max_length=20)
     address = models.TextField()
 
     def __str__(self):
         return self.name
+
 
 class Category(models.Model):
     name = models.CharField(max_length=50)
@@ -23,12 +36,16 @@ class Category(models.Model):
 
 class Product(models.Model):
     company = models.ForeignKey(Company, on_delete=models.CASCADE)
-    category = models.ForeignKey(Category, on_delete=models.SET_NULL, null=True)
+    category = models.ForeignKey('Category', on_delete=models.SET_NULL, null=True)
     name = models.CharField(max_length=100)
     description = models.TextField()
-
     price = models.DecimalField(max_digits=10, decimal_places=2)
-    image = models.ImageField(upload_to='products/findoutpwa/', null=True, blank=True)
+    image = CloudinaryField(
+        'image',
+        folder='products/findoutpwa/',
+        null=True,
+        blank=True
+    )
 
     def __str__(self):
         return self.name
@@ -104,8 +121,9 @@ class TopBurgerItem(models.Model):
         validators=[MinValueValidator(1), MaxValueValidator(3)],
         help_text="Position in the top (1-3)"
     )
-    featured_image = models.ImageField(
-        upload_to='top_burgers/',
+    featured_image = CloudinaryField(
+        'image',
+        folder='top_burgers/',
         help_text="Featured burger image"
     )
 
