@@ -16,6 +16,6 @@ urlpatterns = [
     path('search/', SearchView.as_view(), name='search'),
     path('login/', LoginView.as_view(), name='login'),
     path('register/', RegisterView.as_view(), name='register'),
-    path('api/top-burgers/', TopBurgerSectionView.as_view(), name='top-burgers'),
-    path('api/top-burgers/items/', TopBurgerItemView.as_view(), name='top-burger-items'),
+    path('top-burgers/', TopBurgerSectionView.as_view(), name='top-burgers'),
+    path('top-burgers/items/', TopBurgerItemView.as_view(), name='top-burger-items'),
 ]
