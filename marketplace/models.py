@@ -1,5 +1,6 @@
 from django.db import models
 from django.contrib.auth.models import User
+from django.core.validators import MaxValueValidator, MinValueValidator
 
 class Company(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE)
@@ -50,4 +51,15 @@ class OrderItem(models.Model):
     def __str__(self):
         return f"{self.quantity} x {self.product.name}"
 
-# Remove the duplicate OrderItem class definition
+class TopBurgerSection(models.Model):
+    title = models.CharField(max_length=100, default="TOP 3 BURGUERS")
+    location = models.CharField(max_length=100, default="en San Jose")
+
+class TopBurgerItem(models.Model):
+    section = models.ForeignKey(TopBurgerSection, related_name='items', on_delete=models.CASCADE)
+    company = models.ForeignKey('Company', on_delete=models.CASCADE)
+    order = models.IntegerField(validators=[MinValueValidator(1), MaxValueValidator(3)])
+    featured_image = models.ImageField(upload_to='top_burgers/')
+
+    class Meta:
+        ordering = ['order']

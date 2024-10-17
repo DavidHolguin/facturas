@@ -1,5 +1,6 @@
 from rest_framework import serializers
-from .models import Company, Category, Product, Order, OrderItem
+from .models import Company, Category, Product, Order, OrderItem, TopBurgerSection, TopBurgerItem
+
 
 class CompanySerializer(serializers.ModelSerializer):
     profile_picture_url = serializers.SerializerMethodField()
@@ -47,3 +48,19 @@ class OrderSerializer(serializers.ModelSerializer):
     class Meta:
         model = Order
         fields = '__all__'
+
+class TopBurgerItemSerializer(serializers.ModelSerializer):
+    company_name = serializers.CharField(source='company.name')
+    company_logo = serializers.ImageField(source='company.logo')
+    company_profile_url = serializers.CharField(source='company.profile_url')
+
+    class Meta:
+        model = TopBurgerItem
+        fields = ['company_name', 'company_logo', 'company_profile_url', 'featured_image', 'order']
+
+class TopBurgerSectionSerializer(serializers.ModelSerializer):
+    items = TopBurgerItemSerializer(many=True, read_only=True)
+
+    class Meta:
+        model = TopBurgerSection
+        fields = ['title', 'location', 'items']

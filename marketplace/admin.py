@@ -2,6 +2,7 @@
 
 from django.contrib import admin
 from .models import Company, Category, Product, Order, OrderItem
+from .models import TopBurgerSection, TopBurgerItem
 
 @admin.register(Company)
 class CompanyAdmin(admin.ModelAdmin):
@@ -30,3 +31,5 @@ class OrderItemAdmin(admin.ModelAdmin):
     list_display = ('order', 'product', 'quantity', 'price')
     search_fields = ('order__id', 'product__name')
 
+admin.site.register(TopBurgerSection)
+admin.site.register(TopBurgerItem)

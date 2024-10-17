@@ -12,6 +12,8 @@ from .serializers import OrderSerializer, OrderItemSerializer, CompanySerializer
 from django.conf import settings
 from rest_framework.decorators import action
 from django.core.exceptions import ValidationError
+from .models import TopBurgerSection
+from .serializers import TopBurgerSectionSerializer
 
 class CompanyViewSet(viewsets.ModelViewSet):
     queryset = Company.objects.all()
@@ -123,3 +125,9 @@ class OrderViewSet(viewsets.ModelViewSet):
     def get_queryset(self):
         user = self.request.user
         return Order.objects.filter(user=user)
+    
+class TopBurgerSectionView(APIView):
+    def get(self, request):
+        section = TopBurgerSection.objects.first()  # Assuming only one section
+        serializer = TopBurgerSectionSerializer(section)
+        return Response(serializer.data)
