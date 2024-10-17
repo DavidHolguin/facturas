@@ -54,11 +54,20 @@ class OrderItem(models.Model):
 class TopBurgerSection(models.Model):
     title = models.CharField(max_length=100, default="TOP 3 BURGUERS")
     location = models.CharField(max_length=100, default="en San Jose")
+    position = models.IntegerField(default=0, help_text="Position order for displaying sections")
+    
+    class Meta:
+        ordering = ['position']
 
     def __str__(self):
         return f"{self.title} {self.location}"
 
 class TopBurgerItem(models.Model):
+    ITEM_TYPE_CHOICES = [
+        ('COMPANY', 'Company'),
+        ('BANNER', 'Banner'),
+    ]
+
     section = models.ForeignKey(
         TopBurgerSection, 
         related_name='items', 
@@ -67,7 +76,20 @@ class TopBurgerItem(models.Model):
     company = models.ForeignKey(
         'Company', 
         on_delete=models.CASCADE,
-        related_name='top_burger_items'
+        related_name='top_burger_items',
+        null=True,
+        blank=True
+    )
+    item_type = models.CharField(
+        max_length=10,
+        choices=ITEM_TYPE_CHOICES,
+        default='COMPANY'
+    )
+    custom_url = models.URLField(
+        max_length=255,
+        null=True,
+        blank=True,
+        help_text="Custom URL for banner items"
     )
     order = models.IntegerField(
         validators=[MinValueValidator(1), MaxValueValidator(3)],
@@ -80,7 +102,9 @@ class TopBurgerItem(models.Model):
 
     class Meta:
         ordering = ['order']
-        unique_together = ['section', 'order']  # Evita duplicados en el orden
+        unique_together = ['section', 'order']
 
     def __str__(self):
-        return f"{self.company.name} - Position {self.order}"
+        if self.item_type == 'COMPANY':
+            return f"{self.company.name if self.company else 'No company'} - Position {self.order}"
+        return f"Banner - Position {self.order}"

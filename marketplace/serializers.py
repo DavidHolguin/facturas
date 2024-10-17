@@ -54,6 +54,7 @@ class TopBurgerItemSerializer(serializers.ModelSerializer):
     company_logo = serializers.SerializerMethodField()
     company_profile_url = serializers.SerializerMethodField()
     featured_image = serializers.SerializerMethodField()
+    click_url = serializers.SerializerMethodField()
 
     class Meta:
         model = TopBurgerItem
@@ -62,19 +63,21 @@ class TopBurgerItemSerializer(serializers.ModelSerializer):
             'company_logo',
             'company_profile_url',
             'featured_image',
-            'order'
+            'order',
+            'item_type',
+            'click_url'
         ]
 
     def get_company_name(self, obj):
-        return obj.company.name if obj.company else ""
+        return obj.company.name if obj.company and obj.item_type == 'COMPANY' else ""
 
     def get_company_logo(self, obj):
-        if obj.company and obj.company.profile_picture:
+        if obj.company and obj.company.profile_picture and obj.item_type == 'COMPANY':
             return self.context['request'].build_absolute_uri(obj.company.profile_picture.url)
         return ""
 
     def get_company_profile_url(self, obj):
-        if obj.company:
+        if obj.company and obj.item_type == 'COMPANY':
             return f"/company/{obj.company.id}"
         return ""
 
@@ -83,9 +86,14 @@ class TopBurgerItemSerializer(serializers.ModelSerializer):
             return self.context['request'].build_absolute_uri(obj.featured_image.url)
         return ""
 
+    def get_click_url(self, obj):
+        if obj.item_type == 'BANNER':
+            return obj.custom_url
+        return obj.company_profile_url if obj.company else ""
+
 class TopBurgerSectionSerializer(serializers.ModelSerializer):
     items = TopBurgerItemSerializer(many=True, read_only=True)
 
     class Meta:
         model = TopBurgerSection
-        fields = ['title', 'location', 'items']
+        fields = ['title', 'location', 'items', 'position']

@@ -133,15 +133,14 @@ class TopBurgerSectionView(APIView):
     
     def get(self, request):
         try:
-            # Obtener o crear la sección
-            section, created = TopBurgerSection.objects.get_or_create(
-                defaults={
-                    'title': "TOP 3 BURGUERS",
-                    'location': "en San Jose"
-                }
-            )
+            # Obtener todas las secciones ordenadas por posición
+            sections = TopBurgerSection.objects.all()
             
-            serializer = TopBurgerSectionSerializer(section, context={'request': request})
+            serializer = TopBurgerSectionSerializer(
+                sections, 
+                many=True,
+                context={'request': request}
+            )
             return Response(serializer.data)
             
         except Exception as e:
