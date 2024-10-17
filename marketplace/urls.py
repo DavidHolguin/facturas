@@ -2,7 +2,7 @@ from django.urls import path, include
 from rest_framework.routers import DefaultRouter
 from . import views
 from .views import SearchView, LoginView, RegisterView, OrderViewSet
-from .views import TopBurgerSectionView, TopBurgerItemView
+from .views import TopBurgerSectionView
 
 
 router = DefaultRouter()
@@ -17,5 +17,4 @@ urlpatterns = [
     path('login/', LoginView.as_view(), name='login'),
     path('register/', RegisterView.as_view(), name='register'),
     path('top-burgers/', TopBurgerSectionView.as_view(), name='top-burgers'),
-    path('top-burgers/items/', TopBurgerItemView.as_view(), name='top-burger-items'),
 ]

@@ -1,5 +1,6 @@
+from rest_framework import serializers  # Asegúrate de importar serializers
 from rest_framework import viewsets
-from .models import Company, Category, Product, Order
+from .models import Company, Category, Product, Order, TopBurgerSection, TopBurgerItem
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
@@ -7,14 +8,12 @@ from django.contrib.auth.models import User
 from rest_framework.authtoken.models import Token
 from django.contrib.auth import authenticate
 from rest_framework.permissions import IsAuthenticated, IsAuthenticatedOrReadOnly, AllowAny
-from .models import Order, OrderItem
-from .serializers import OrderSerializer, OrderItemSerializer, CompanySerializer, CategorySerializer, ProductSerializer
+from .serializers import OrderSerializer, OrderItemSerializer, OrderItem, CompanySerializer, CategorySerializer, ProductSerializer, TopBurgerSectionSerializer, TopBurgerItemSerializer
 from django.conf import settings
 from rest_framework.decorators import action
 from django.core.exceptions import ValidationError
-from .models import TopBurgerSection, TopBurgerItem
-from .serializers import TopBurgerSectionSerializer
 from django.shortcuts import get_object_or_404
+import logging
 
 class CompanyViewSet(viewsets.ModelViewSet):
     queryset = Company.objects.all()
@@ -126,13 +125,15 @@ class OrderViewSet(viewsets.ModelViewSet):
     def get_queryset(self):
         user = self.request.user
         return Order.objects.filter(user=user)
-    
+
+logger = logging.getLogger(__name__)
+
 class TopBurgerSectionView(APIView):
     permission_classes = [AllowAny]
     
     def get(self, request):
         try:
-            # Obtener la primera sección o crearla si no existe
+            # Obtener o crear la sección
             section, created = TopBurgerSection.objects.get_or_create(
                 defaults={
                     'title': "TOP 3 BURGUERS",
@@ -140,40 +141,59 @@ class TopBurgerSectionView(APIView):
                 }
             )
             
-            # Usar el serializer con los items relacionados
-            serializer = TopBurgerSectionSerializer(section)
+            serializer = TopBurgerSectionSerializer(section, context={'request': request})
             return Response(serializer.data)
             
         except Exception as e:
-            return Response(
-                {"error": f"Error al obtener los datos: {str(e)}"}, 
-                status=500
-            )
+            logger.error(f"Error in TopBurgerSectionView: {str(e)}")
+            return Response({
+                "error": str(e)
+            }, status=500)
 
-# Vista adicional para manejar los items individualmente
-class TopBurgerItemView(APIView):
-    permission_classes = [AllowAny]
+class TopBurgerItemSerializer(serializers.ModelSerializer):
+    company_name = serializers.SerializerMethodField()
+    company_logo = serializers.SerializerMethodField()
+    company_profile_url = serializers.SerializerMethodField()
+    featured_image = serializers.SerializerMethodField()
 
-    def post(self, request):
-        try:
-            section = TopBurgerSection.objects.first()
-            if not section:
-                section = TopBurgerSection.objects.create()
+    class Meta:
+        model = TopBurgerItem
+        fields = [
+            'company_name',
+            'company_logo',
+            'company_profile_url',
+            'featured_image',
+            'order'
+        ]
 
-            # Crear un nuevo item
-            TopBurgerItem.objects.create(
-                section=section,
-                company_id=request.data.get('company_id'),
-                order=request.data.get('order'),
-                featured_image=request.data.get('featured_image')
-            )
-            
-            # Devolver la sección actualizada
-            serializer = TopBurgerSectionSerializer(section)
-            return Response(serializer.data, status=201)
-            
-        except Exception as e:
-            return Response(
-                {"error": f"Error al crear el item: {str(e)}"}, 
-                status=400
-            )
+    def get_company_name(self, obj):
+        return obj.company.name if obj.company else ""
+
+    def get_company_logo(self, obj):
+        if obj.company and obj.company.profile_picture:
+            return self.context['request'].build_absolute_uri(obj.company.profile_picture.url)
+        return ""
+
+    def get_company_profile_url(self, obj):
+        if obj.company:
+            return f"/company/{obj.company.id}"
+        return ""
+
+    def get_featured_image(self, obj):
+        if obj.featured_image:
+            return self.context['request'].build_absolute_uri(obj.featured_image.url)
+        return ""
+
+class TopBurgerSectionSerializer(serializers.ModelSerializer):
+    items = TopBurgerItemSerializer(many=True, read_only=True)
+
+    class Meta:
+        model = TopBurgerSection
+        fields = ['title', 'location', 'items']
+
+    def to_representation(self, instance):
+        # Asegurarnos de que items sea una lista vacía si no hay items
+        representation = super().to_representation(instance)
+        if not representation.get('items'):
+            representation['items'] = []
+        return representation

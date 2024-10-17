@@ -50,13 +50,38 @@ class OrderSerializer(serializers.ModelSerializer):
         fields = '__all__'
 
 class TopBurgerItemSerializer(serializers.ModelSerializer):
-    company_name = serializers.CharField(source='company.name')
-    company_logo = serializers.ImageField(source='company.logo')
-    company_profile_url = serializers.CharField(source='company.profile_url')
+    company_name = serializers.SerializerMethodField()
+    company_logo = serializers.SerializerMethodField()
+    company_profile_url = serializers.SerializerMethodField()
+    featured_image = serializers.SerializerMethodField()
 
     class Meta:
         model = TopBurgerItem
-        fields = ['company_name', 'company_logo', 'company_profile_url', 'featured_image', 'order']
+        fields = [
+            'company_name',
+            'company_logo',
+            'company_profile_url',
+            'featured_image',
+            'order'
+        ]
+
+    def get_company_name(self, obj):
+        return obj.company.name if obj.company else ""
+
+    def get_company_logo(self, obj):
+        if obj.company and obj.company.profile_picture:
+            return self.context['request'].build_absolute_uri(obj.company.profile_picture.url)
+        return ""
+
+    def get_company_profile_url(self, obj):
+        if obj.company:
+            return f"/company/{obj.company.id}"
+        return ""
+
+    def get_featured_image(self, obj):
+        if obj.featured_image:
+            return self.context['request'].build_absolute_uri(obj.featured_image.url)
+        return ""
 
 class TopBurgerSectionSerializer(serializers.ModelSerializer):
     items = TopBurgerItemSerializer(many=True, read_only=True)

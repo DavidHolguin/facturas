@@ -55,11 +55,32 @@ class TopBurgerSection(models.Model):
     title = models.CharField(max_length=100, default="TOP 3 BURGUERS")
     location = models.CharField(max_length=100, default="en San Jose")
 
+    def __str__(self):
+        return f"{self.title} {self.location}"
+
 class TopBurgerItem(models.Model):
-    section = models.ForeignKey(TopBurgerSection, related_name='items', on_delete=models.CASCADE)
-    company = models.ForeignKey('Company', on_delete=models.CASCADE)
-    order = models.IntegerField(validators=[MinValueValidator(1), MaxValueValidator(3)])
-    featured_image = models.ImageField(upload_to='top_burgers/')
+    section = models.ForeignKey(
+        TopBurgerSection, 
+        related_name='items', 
+        on_delete=models.CASCADE
+    )
+    company = models.ForeignKey(
+        'Company', 
+        on_delete=models.CASCADE,
+        related_name='top_burger_items'
+    )
+    order = models.IntegerField(
+        validators=[MinValueValidator(1), MaxValueValidator(3)],
+        help_text="Position in the top (1-3)"
+    )
+    featured_image = models.ImageField(
+        upload_to='top_burgers/',
+        help_text="Featured burger image"
+    )
 
     class Meta:
         ordering = ['order']
+        unique_together = ['section', 'order']  # Evita duplicados en el orden
+
+    def __str__(self):
+        return f"{self.company.name} - Position {self.order}"
