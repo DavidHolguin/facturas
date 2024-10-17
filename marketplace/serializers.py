@@ -96,4 +96,4 @@ class TopBurgerSectionSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = TopBurgerSection
-        fields = ['title', 'location', 'items', 'position']
+        fields = ['id', 'title', 'location', 'position', 'items']

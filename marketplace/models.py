@@ -54,6 +54,15 @@ class OrderItem(models.Model):
 class TopBurgerSection(models.Model):
     title = models.CharField(max_length=100, default="TOP 3 BURGUERS")
     location = models.CharField(max_length=100, default="en San Jose")
+    position = models.IntegerField(default=0)
+    
+    class Meta:
+        ordering = ['position']
+
+    def __str__(self):
+        return f"{self.title} {self.location}"
+    title = models.CharField(max_length=100, default="TOP 3 BURGUERS")
+    location = models.CharField(max_length=100, default="en San Jose")
     position = models.IntegerField(default=0, help_text="Position order for displaying sections")
     
     class Meta:
