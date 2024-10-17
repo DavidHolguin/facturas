@@ -1,32 +1,27 @@
 from django.db import models
 from django.contrib.auth.models import User
 from django.core.validators import MaxValueValidator, MinValueValidator
-from cloudinary_storage.storage import MediaCloudinaryStorage
 from cloudinary.models import CloudinaryField
 
 class Company(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE)
-    name = models.CharField(max_length=100)  # Add missing closing parenthesis
+    name = models.CharField(max_length=100)
     description = models.TextField()
-
     profile_picture = CloudinaryField(
         'image',
-        folder='company_profiles/findoutpwa/',
-        null=True,
-        blank=True
+        folder='company_profiles/',
+        help_text="Imagen de perfil de la compañía"
     )
     cover_photo = CloudinaryField(
         'image',
-        folder='company_covers/findoutpwa/',
-        null=True,
-        blank=True
+        folder='company_covers/',
+        help_text="Foto de portada de la compañía"
     )
     phone = models.CharField(max_length=20)
     address = models.TextField()
 
     def __str__(self):
         return self.name
-
 
 class Category(models.Model):
     name = models.CharField(max_length=50)
@@ -42,9 +37,8 @@ class Product(models.Model):
     price = models.DecimalField(max_digits=10, decimal_places=2)
     image = CloudinaryField(
         'image',
-        folder='products/findoutpwa/',
-        null=True,
-        blank=True
+        folder='products/',
+        help_text="Imagen del producto"
     )
 
     def __str__(self):
@@ -71,16 +65,7 @@ class OrderItem(models.Model):
 class TopBurgerSection(models.Model):
     title = models.CharField(max_length=100, default="TOP 3 BURGUERS")
     location = models.CharField(max_length=100, default="en San Jose")
-    position = models.IntegerField(default=0)
-    
-    class Meta:
-        ordering = ['position']
-
-    def __str__(self):
-        return f"{self.title} {self.location}"
-    title = models.CharField(max_length=100, default="TOP 3 BURGUERS")
-    location = models.CharField(max_length=100, default="en San Jose")
-    position = models.IntegerField(default=0, help_text="Position order for displaying sections")
+    position = models.IntegerField(default=0, help_text="Orden de posición para mostrar secciones")
     
     class Meta:
         ordering = ['position']
@@ -115,16 +100,16 @@ class TopBurgerItem(models.Model):
         max_length=255,
         null=True,
         blank=True,
-        help_text="Custom URL for banner items"
+        help_text="URL personalizada para elementos de banner"
     )
     order = models.IntegerField(
         validators=[MinValueValidator(1), MaxValueValidator(3)],
-        help_text="Position in the top (1-3)"
+        help_text="Posición en el top (1-3)"
     )
     featured_image = CloudinaryField(
         'image',
         folder='top_burgers/',
-        help_text="Featured burger image"
+        help_text="Imagen destacada de la hamburguesa"
     )
 
     class Meta:
@@ -133,5 +118,5 @@ class TopBurgerItem(models.Model):
 
     def __str__(self):
         if self.item_type == 'COMPANY':
-            return f"{self.company.name if self.company else 'No company'} - Position {self.order}"
-        return f"Banner - Position {self.order}"
+            return f"{self.company.name if self.company else 'Sin compañía'} - Posición {self.order}"
+        return f"Banner - Posición {self.order}"
