@@ -127,6 +127,8 @@ class OrderViewSet(viewsets.ModelViewSet):
         return Order.objects.filter(user=user)
     
 class TopBurgerSectionView(APIView):
+    permission_classes = [AllowAny]  # Hace la vista pública
+    
     def get(self, request):
         section = TopBurgerSection.objects.first()  # Assuming only one section
         serializer = TopBurgerSectionSerializer(section)
