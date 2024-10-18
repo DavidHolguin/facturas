@@ -93,8 +93,21 @@ class SearchView(APIView):
         return Response(results)
     
 class LoginView(APIView):
-    permission_classes = [AllowAny]  # Añadimos esto explícitamente
-    
+    permission_classes = [AllowAny]
+
+    def get(self, request):
+        # Verificar si el usuario está autenticado mediante el token
+        if request.user.is_authenticated:
+            return Response({
+                'user_id': request.user.id,
+                'username': request.user.username,
+                'email': request.user.email
+            })
+        return Response(
+            {'error': 'Usuario no autenticado'},
+            status=status.HTTP_401_UNAUTHORIZED
+        )
+
     def post(self, request):
         username = request.data.get('username')
         password = request.data.get('password')
@@ -118,6 +131,56 @@ class LoginView(APIView):
             
         return Response(
             {'error': 'Credenciales inválidas'},
+            status=status.HTTP_401_UNAUTHORIZED
+        )
+
+    def put(self, request):
+        # Actualizar datos del usuario
+        if request.user.is_authenticated:
+            user = request.user
+            username = request.data.get('username')
+            email = request.data.get('email')
+            
+            if username:
+                user.username = username
+            if email:
+                user.email = email
+                
+            try:
+                user.save()
+                return Response({
+                    'user_id': user.id,
+                    'username': user.username,
+                    'email': user.email
+                })
+            except Exception as e:
+                return Response(
+                    {'error': str(e)},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+                
+        return Response(
+            {'error': 'Usuario no autenticado'},
+            status=status.HTTP_401_UNAUTHORIZED
+        )
+
+    def delete(self, request):
+        # Eliminar usuario
+        if request.user.is_authenticated:
+            try:
+                request.user.delete()
+                return Response(
+                    {'message': 'Usuario eliminado correctamente'},
+                    status=status.HTTP_204_NO_CONTENT
+                )
+            except Exception as e:
+                return Response(
+                    {'error': str(e)},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+                
+        return Response(
+            {'error': 'Usuario no autenticado'},
             status=status.HTTP_401_UNAUTHORIZED
         )
 
