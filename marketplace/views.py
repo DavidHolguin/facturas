@@ -122,6 +122,8 @@ class LoginView(APIView):
         )
 
 class RegisterView(APIView):
+    permission_classes = [AllowAny]  # Asegúrate de que esta línea esté presente
+ 
     def post(self, request):
         username = request.data.get('username')
         email = request.data.get('email')
