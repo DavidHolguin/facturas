@@ -1,10 +1,22 @@
 from rest_framework import serializers
-from .models import Company, Category, Product, Order, OrderItem, TopBurgerSection, TopBurgerItem
+from .models import Company, Category, Product, Order, OrderItem, CompanyCategory, Country, TopBurgerSection, TopBurgerItem
 
+
+class CompanyCategorySerializer(serializers.ModelSerializer):
+    class Meta:
+        model = CompanyCategory
+        fields = ['id', 'name', 'description']
+
+class CountrySerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Country
+        fields = ['id', 'name', 'code']
 
 class CompanySerializer(serializers.ModelSerializer):
     profile_picture_url = serializers.SerializerMethodField()
     cover_photo_url = serializers.SerializerMethodField()
+    category = CompanyCategorySerializer(read_only=False, required=False)
+    country = CountrySerializer(read_only=False, required=False)
 
     class Meta:
         model = Company
@@ -12,13 +24,41 @@ class CompanySerializer(serializers.ModelSerializer):
 
     def get_profile_picture_url(self, obj):
         if obj.profile_picture:
-            return obj.profile_picture.url  # Cambiado para usar Cloudinary
+            return obj.profile_picture.url
         return None
 
     def get_cover_photo_url(self, obj):
         if obj.cover_photo:
-            return obj.cover_photo.url  # Cambiado para usar Cloudinary
+            return obj.cover_photo.url
         return None
+
+    def create(self, validated_data):
+        category_data = validated_data.pop('category', None)
+        country_data = validated_data.pop('country', None)
+        
+        if category_data:
+            category, _ = CompanyCategory.objects.get_or_create(**category_data)
+            validated_data['category'] = category
+            
+        if country_data:
+            country, _ = Country.objects.get_or_create(**country_data)
+            validated_data['country'] = country
+            
+        return super().create(validated_data)
+
+    def update(self, instance, validated_data):
+        category_data = validated_data.pop('category', None)
+        country_data = validated_data.pop('country', None)
+        
+        if category_data:
+            category, _ = CompanyCategory.objects.get_or_create(**category_data)
+            validated_data['category'] = category
+            
+        if country_data:
+            country, _ = Country.objects.get_or_create(**country_data)
+            validated_data['country'] = country
+            
+        return super().update(instance, validated_data)
 
 class CategorySerializer(serializers.ModelSerializer):
     class Meta:

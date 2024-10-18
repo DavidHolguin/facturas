@@ -3,8 +3,46 @@ from django.contrib.auth.models import User
 from django.core.validators import MaxValueValidator, MinValueValidator
 from cloudinary.models import CloudinaryField
 
+class CompanyCategory(models.Model):
+    name = models.CharField(max_length=100)
+    description = models.TextField(blank=True)
+
+    def __str__(self):
+        return self.name
+
+    class Meta:
+        verbose_name = "Categoría de empresa"
+        verbose_name_plural = "Categorías de empresas"
+
+class Country(models.Model):
+    name = models.CharField(max_length=100)
+    code = models.CharField(max_length=3, unique=True)  # Código ISO del país
+    
+    def __str__(self):
+        return self.name
+
+    class Meta:
+        verbose_name = "País"
+        verbose_name_plural = "Países"
+
 class Company(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE)
+    category = models.ForeignKey(
+        CompanyCategory, 
+        on_delete=models.SET_NULL, 
+        null=True, 
+        blank=True,
+        related_name='companies',
+        verbose_name="Categoría"
+    )
+    country = models.ForeignKey(
+        Country,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='companies',
+        verbose_name="País"
+    )
     name = models.CharField(max_length=100)
     description = models.TextField()
     profile_picture = CloudinaryField(

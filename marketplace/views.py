@@ -1,6 +1,6 @@
 from rest_framework import serializers  # Asegúrate de importar serializers
 from rest_framework import viewsets
-from .models import Company, Category, Product, Order, TopBurgerSection, TopBurgerItem
+from .models import Company, Category, Product, Order, OrderItem, CompanyCategory, Country, TopBurgerSection, TopBurgerItem
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
@@ -8,12 +8,23 @@ from django.contrib.auth.models import User
 from rest_framework.authtoken.models import Token
 from django.contrib.auth import authenticate
 from rest_framework.permissions import IsAuthenticated, IsAuthenticatedOrReadOnly, AllowAny
-from .serializers import OrderSerializer, OrderItemSerializer, OrderItem, CompanySerializer, CategorySerializer, ProductSerializer, TopBurgerSectionSerializer, TopBurgerItemSerializer
+from .serializers import OrderSerializer, OrderItemSerializer, CompanyCategorySerializer, CountrySerializer, \
+    OrderItem, CompanySerializer, CategorySerializer, ProductSerializer, TopBurgerSectionSerializer, TopBurgerItemSerializer
 from django.conf import settings
 from rest_framework.decorators import action
 from django.core.exceptions import ValidationError
 from django.shortcuts import get_object_or_404
 import logging
+
+class CompanyCategoryViewSet(viewsets.ModelViewSet):
+    queryset = CompanyCategory.objects.all()
+    serializer_class = CompanyCategorySerializer
+    permission_classes = [AllowAny]
+
+class CountryViewSet(viewsets.ModelViewSet):
+    queryset = Country.objects.all()
+    serializer_class = CountrySerializer
+    permission_classes = [AllowAny]
 
 class CompanyViewSet(viewsets.ModelViewSet):
     queryset = Company.objects.all()
@@ -24,6 +35,18 @@ class CompanyViewSet(viewsets.ModelViewSet):
         context = super().get_serializer_context()
         context['request'] = self.request
         return context
+
+    def get_queryset(self):
+        queryset = Company.objects.all()
+        category = self.request.query_params.get('category', None)
+        country = self.request.query_params.get('country', None)
+        
+        if category is not None:
+            queryset = queryset.filter(category__id=category)
+        if country is not None:
+            queryset = queryset.filter(country__id=country)
+            
+        return queryset
 
 class CategoryViewSet(viewsets.ModelViewSet):
     queryset = Category.objects.all()
