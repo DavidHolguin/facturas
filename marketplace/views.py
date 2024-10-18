@@ -93,14 +93,33 @@ class SearchView(APIView):
         return Response(results)
     
 class LoginView(APIView):
+    permission_classes = [AllowAny]  # Añadimos esto explícitamente
+    
     def post(self, request):
         username = request.data.get('username')
         password = request.data.get('password')
+        
+        if not username or not password:
+            return Response(
+                {'error': 'Por favor proporcione usuario y contraseña'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+            
         user = authenticate(username=username, password=password)
+        
         if user:
             token, _ = Token.objects.get_or_create(user=user)
-            return Response({'token': token.key})
-        return Response({'error': 'Credenciales inválidas'}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({
+                'token': token.key,
+                'user_id': user.id,
+                'username': user.username,
+                'email': user.email
+            })
+            
+        return Response(
+            {'error': 'Credenciales inválidas'},
+            status=status.HTTP_401_UNAUTHORIZED
+        )
 
 class RegisterView(APIView):
     def post(self, request):
