@@ -23,11 +23,20 @@ class Company(models.Model):
     def __str__(self):
         return self.name
 
+
 class Category(models.Model):
+    CATEGORY_TYPES = [
+        ('EMPRESA', 'Categoría Empresa'),
+        ('SERVICIOS', 'Categoría Servicios'),
+        ('PRODUCTOS', 'Categoría Productos'),
+        ('PAIS', 'Categoría País'),
+    ]
+
     name = models.CharField(max_length=50)
+    category_type = models.CharField(max_length=20, choices=CATEGORY_TYPES, null=True, blank=True)
 
     def __str__(self):
-        return self.name
+        return f"{self.name} - {self.get_category_type_display() if self.category_type else 'Sin tipo'}"
 
 class Product(models.Model):
     company = models.ForeignKey(Company, on_delete=models.CASCADE)
