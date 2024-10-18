@@ -1,8 +1,8 @@
 # marketplace/admin.py
 
 from django.contrib import admin
-from .models import Company, Category, Product, Order, OrderItem
-from .models import TopBurgerSection, TopBurgerItem
+from .models import Company, Category, Product, Order, OrderItem, TopBurgerSection, TopBurgerItem, CompanyCategory, Country
+
 
 @admin.register(Company)
 class CompanyAdmin(admin.ModelAdmin):
@@ -33,3 +33,15 @@ class OrderItemAdmin(admin.ModelAdmin):
 
 admin.site.register(TopBurgerSection)
 admin.site.register(TopBurgerItem)
+
+
+@admin.register(CompanyCategory)
+class CompanyCategoryAdmin(admin.ModelAdmin):
+    list_display = ('name',)
+    search_fields = ('name', 'description')
+
+@admin.register(Country)
+class CountryAdmin(admin.ModelAdmin):
+    list_display = ('name', 'code')
+    search_fields = ('name', 'code')
+    list_per_page = 20
