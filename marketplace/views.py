@@ -269,7 +269,9 @@ class TopBurgerItemSerializer(serializers.ModelSerializer):
             'company_logo',
             'company_profile_url',
             'featured_image',
-            'order'
+            'order',
+            'item_type',  # Añadimos el campo item_type aquí
+            'custom_url'  # También incluimos custom_url para elementos de tipo banner
         ]
 
     def get_company_name(self, obj):
@@ -289,7 +291,7 @@ class TopBurgerItemSerializer(serializers.ModelSerializer):
         if obj.featured_image:
             return self.context['request'].build_absolute_uri(obj.featured_image.url)
         return ""
-
+    
 class TopBurgerSectionSerializer(serializers.ModelSerializer):
     items = TopBurgerItemSerializer(many=True, read_only=True)
 
