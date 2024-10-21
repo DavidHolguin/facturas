@@ -61,7 +61,6 @@ class Country(models.Model):
     )
 
     def get_flag_emoji(self):
-        # Convierte el código de país a emoji de bandera
         if self.code:
             return next((choice[1].split()[0] for choice in self.COUNTRY_CHOICES if choice[0] == self.code), '')
         return ''
@@ -157,7 +156,7 @@ class OrderItem(models.Model):
 
     def __str__(self):
         return f"{self.quantity} x {self.product.name}"
-
+    
 class TopBurgerSection(models.Model):
     title = models.CharField(max_length=100, default="TOP 3 BURGUERS")
     location = models.CharField(max_length=100, default="en San Jose")
@@ -216,7 +215,7 @@ class TopBurgerItem(models.Model):
         if self.item_type == 'COMPANY':
             return f"{self.company.name if self.company else 'Sin compañía'} - Posición {self.order}"
         return f"Banner - Posición {self.order}"
-    
+
 class BusinessHours(models.Model):
     company = models.OneToOneField(
         Company,
