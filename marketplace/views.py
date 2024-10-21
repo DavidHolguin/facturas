@@ -1,20 +1,19 @@
-from rest_framework import serializers  # Asegúrate de importar serializers
-from rest_framework import viewsets
-from .models import Company, Category, Product, Order, OrderItem, BusinessHours, CompanyCategory, Country, TopBurgerSection, TopBurgerItem
+from django.contrib.auth.models import User
+from rest_framework.authtoken.models import Token  # Añade esta línea
+from rest_framework import serializers, viewsets, status
 from rest_framework.views import APIView
 from rest_framework.response import Response
-from rest_framework import status
-from django.contrib.auth.models import User
-from rest_framework.authtoken.models import Token
-from django.contrib.auth import authenticate
 from rest_framework.permissions import IsAuthenticated, IsAuthenticatedOrReadOnly, AllowAny
-from .serializers import OrderSerializer, OrderItemSerializer, CompanyCategorySerializer, CountrySerializer, \
-    OrderItem, CompanySerializer, CategorySerializer, ProductSerializer, TopBurgerSectionSerializer, TopBurgerItemSerializer
-from django.conf import settings
 from rest_framework.decorators import action
-from django.core.exceptions import ValidationError
+from django.contrib.auth import authenticate
 from django.shortcuts import get_object_or_404
+from .models import Company, Category, Product, Order, OrderItem, BusinessHours, CompanyCategory, Country, TopBurgerSection, TopBurgerItem
+from .serializers import OrderSerializer, OrderItemSerializer, CompanyCategorySerializer, CountrySerializer, \
+    CompanySerializer, CategorySerializer, ProductSerializer, TopBurgerSectionSerializer, TopBurgerItemSerializer
+
 import logging
+
+logger = logging.getLogger(__name__)
 
 class CompanyCategoryViewSet(viewsets.ModelViewSet):
     queryset = CompanyCategory.objects.all()
@@ -28,25 +27,25 @@ class CountryViewSet(viewsets.ModelViewSet):
 
     @action(detail=False, methods=['get'])
     def available_countries(self, request):
-        """
-        Endpoint para obtener la lista de países disponibles con sus banderas
-        """
-        countries = [
-            {
-                'code': code,
-                'name': name.split(maxsplit=1)[1],  # Removemos el emoji del nombre
-                'flag_emoji': name.split()[0]  # Obtenemos solo el emoji
-            }
-            for code, name in Country.COUNTRY_CHOICES
-        ]
-        return Response(countries)
+        try:
+            countries = [
+                {
+                    'code': code,
+                    'name': name.split(maxsplit=1)[1],
+                    'flag_emoji': name.split()[0]
+                }
+                for code, name in Country.COUNTRY_CHOICES
+            ]
+            return Response(countries)
+        except Exception as e:
+            logger.error(f"Error in available_countries: {str(e)}")
+            return Response({'error': 'An unexpected error occurred'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
     def create(self, request, *args, **kwargs):
-        # Validar que el código del país esté en las opciones disponibles
         code = request.data.get('code')
         if code not in dict(Country.COUNTRY_CHOICES):
             return Response(
-                {'error': 'El código del país no es válido. Debe ser uno de los países disponibles.'},
+                {'error': 'Invalid country code. Must be one of the available countries.'},
                 status=status.HTTP_400_BAD_REQUEST
             )
         return super().create(request, *args, **kwargs)
@@ -57,18 +56,14 @@ class CompanyViewSet(viewsets.ModelViewSet):
     permission_classes = [AllowAny]
 
     def get_queryset(self):
-        # Empezamos con el queryset base optimizado con prefetch_related
         queryset = Company.objects.prefetch_related(
             'business_hours',
             'category',
             'country'
         )
-
-        # Obtenemos los parámetros de filtrado
         category = self.request.query_params.get('category', None)
         country = self.request.query_params.get('country', None)
-       
-        # Aplicamos los filtros si existen
+        
         if category is not None:
             queryset = queryset.filter(category__id=category)
         if country is not None:
@@ -82,27 +77,16 @@ class CompanyViewSet(viewsets.ModelViewSet):
         return context
 
     def perform_create(self, serializer):
-        """
-        Sobrescribimos perform_create para manejar la lógica de creación
-        y mantener el ViewSet más limpio
-        """
         company = serializer.save()
         self._handle_business_hours(company, self.request.data.get('business_hours', {}))
         return company
 
     def perform_update(self, serializer):
-        """
-        Sobrescribimos perform_update para manejar la lógica de actualización
-        y mantener el ViewSet más limpio
-        """
         company = serializer.save()
         self._handle_business_hours(company, self.request.data.get('business_hours', {}))
         return company
 
     def _handle_business_hours(self, company, business_hours_data):
-        """
-        Método auxiliar para manejar la creación/actualización de business_hours
-        """
         if not business_hours_data:
             return
 
@@ -122,41 +106,54 @@ class CompanyViewSet(viewsets.ModelViewSet):
             business_hours.save()
 
     def create(self, request, *args, **kwargs):
-        serializer = self.get_serializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
-        company = self.perform_create(serializer)
-        headers = self.get_success_headers(serializer.data)
-        return Response(serializer.data, status=status.HTTP_201_CREATED, headers=headers)
+        try:
+            serializer = self.get_serializer(data=request.data)
+            serializer.is_valid(raise_exception=True)
+            company = self.perform_create(serializer)
+            headers = self.get_success_headers(serializer.data)
+            return Response(serializer.data, status=status.HTTP_201_CREATED, headers=headers)
+        except Exception as e:
+            logger.error(f"Error creating company: {str(e)}")
+            return Response({'error': 'An error occurred while creating the company'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
     def update(self, request, *args, **kwargs):
-        partial = kwargs.pop('partial', False)
-        instance = self.get_object()
-        serializer = self.get_serializer(instance, data=request.data, partial=partial)
-        serializer.is_valid(raise_exception=True)
-        self.perform_update(serializer)
+        try:
+            partial = kwargs.pop('partial', False)
+            instance = self.get_object()
+            serializer = self.get_serializer(instance, data=request.data, partial=partial)
+            serializer.is_valid(raise_exception=True)
+            self.perform_update(serializer)
 
-        if getattr(instance, '_prefetched_objects_cache', None):
-            instance._prefetched_objects_cache = {}
+            if getattr(instance, '_prefetched_objects_cache', None):
+                instance._prefetched_objects_cache = {}
 
-        return Response(serializer.data)
+            return Response(serializer.data)
+        except Exception as e:
+            logger.error(f"Error updating company: {str(e)}")
+            return Response({'error': 'An error occurred while updating the company'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
     def retrieve(self, request, *args, **kwargs):
-        instance = self.get_object()
-        serializer = self.get_serializer(instance)
-        data = serializer.data
+        try:
+            instance = self.get_object()
+            serializer = self.get_serializer(instance)
+            data = serializer.data
 
-        # Optimizar la consulta de business_hours usando el prefetch_related
-        if hasattr(instance, 'business_hours'):
-            business_hours = instance.business_hours
-            data['business_hours'] = {
-                'open_days': business_hours.open_days,
-                'open_time': business_hours.open_time,
-                'close_time': business_hours.close_time
-            }
-        else:
-            data['business_hours'] = None
+            if hasattr(instance, 'business_hours'):
+                business_hours = instance.business_hours
+                data['business_hours'] = {
+                    'open_days': business_hours.open_days,
+                    'open_time': business_hours.open_time,
+                    'close_time': business_hours.close_time
+                }
+            else:
+                data['business_hours'] = None
 
-        return Response(data)
+            return Response(data)
+        except Company.DoesNotExist:
+            return Response({'error': 'Company not found'}, status=status.HTTP_404_NOT_FOUND)
+        except Exception as e:
+            logger.error(f"Error retrieving company: {str(e)}")
+            return Response({'error': 'An unexpected error occurred'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 class CategoryViewSet(viewsets.ModelViewSet):
     queryset = Category.objects.all()
@@ -183,30 +180,64 @@ class OrderViewSet(viewsets.ModelViewSet):
         context['request'] = self.request
         return context
 
+    def create(self, request):
+        try:
+            data = request.data
+            user = request.user
+            company_id = data.get('company')
+            items = data.get('items', [])
+
+            if not company_id or not items:
+                return Response({"error": "Incomplete order data"}, status=status.HTTP_400_BAD_REQUEST)
+
+            total = sum(item['price'] * item['quantity'] for item in items)
+            order = Order.objects.create(user=user, company_id=company_id, total=total)
+
+            for item in items:
+                OrderItem.objects.create(
+                    order=order,
+                    product_id=item['product'],
+                    quantity=item['quantity'],
+                    price=item['price']
+                )
+
+            serializer = self.get_serializer(order)
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+        except Exception as e:
+            logger.error(f"Error creating order: {str(e)}")
+            return Response({'error': 'An error occurred while creating the order'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+    def get_queryset(self):
+        user = self.request.user
+        return Order.objects.filter(user=user)
+
 class SearchView(APIView):
     def get(self, request):
-        query = request.query_params.get('q', '')
-        companies = Company.objects.filter(name__icontains=query)
-        products = Product.objects.filter(name__icontains=query)
-        categories = Category.objects.filter(name__icontains=query)
+        try:
+            query = request.query_params.get('q', '')
+            companies = Company.objects.filter(name__icontains=query)
+            products = Product.objects.filter(name__icontains=query)
+            categories = Category.objects.filter(name__icontains=query)
 
-        company_serializer = CompanySerializer(companies, many=True, context={'request': request})
-        product_serializer = ProductSerializer(products, many=True, context={'request': request})
-        category_serializer = CategorySerializer(categories, many=True)
+            company_serializer = CompanySerializer(companies, many=True, context={'request': request})
+            product_serializer = ProductSerializer(products, many=True, context={'request': request})
+            category_serializer = CategorySerializer(categories, many=True)
 
-        results = (
-            company_serializer.data +
-            product_serializer.data +
-            category_serializer.data
-        )
+            results = (
+                company_serializer.data +
+                product_serializer.data +
+                category_serializer.data
+            )
 
-        return Response(results)
-    
+            return Response(results)
+        except Exception as e:
+            logger.error(f"Error in search: {str(e)}")
+            return Response({'error': 'An error occurred during search'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
 class LoginView(APIView):
     permission_classes = [AllowAny]
 
     def get(self, request):
-        # Verificar si el usuario está autenticado mediante el token
         if request.user.is_authenticated:
             return Response({
                 'user_id': request.user.id,
@@ -214,7 +245,7 @@ class LoginView(APIView):
                 'email': request.user.email
             })
         return Response(
-            {'error': 'Usuario no autenticado'},
+            {'error': 'User not authenticated'},
             status=status.HTTP_401_UNAUTHORIZED
         )
 
@@ -224,7 +255,7 @@ class LoginView(APIView):
         
         if not username or not password:
             return Response(
-                {'error': 'Por favor proporcione usuario y contraseña'},
+                {'error': 'Please provide both username and password'},
                 status=status.HTTP_400_BAD_REQUEST
             )
             
@@ -240,12 +271,11 @@ class LoginView(APIView):
             })
             
         return Response(
-            {'error': 'Credenciales inválidas'},
+            {'error': 'Invalid credentials'},
             status=status.HTTP_401_UNAUTHORIZED
         )
 
     def put(self, request):
-        # Actualizar datos del usuario
         if request.user.is_authenticated:
             user = request.user
             username = request.data.get('username')
@@ -270,101 +300,62 @@ class LoginView(APIView):
                 )
                 
         return Response(
-            {'error': 'Usuario no autenticado'},
+            {'error': 'User not authenticated'},
             status=status.HTTP_401_UNAUTHORIZED
         )
 
     def delete(self, request):
-        # Eliminar usuario
         if request.user.is_authenticated:
             try:
                 request.user.delete()
                 return Response(
-                    {'message': 'Usuario eliminado correctamente'},
+                    {'message': 'User deleted successfully'},
                     status=status.HTTP_204_NO_CONTENT
                 )
             except Exception as e:
                 return Response(
                     {'error': str(e)},
-                    status=status.HTTP_400_BAD_REQUEST
+                    status=status.HTTP_400_BAD_ERROR
                 )
                 
         return Response(
-            {'error': 'Usuario no autenticado'},
+            {'error': 'User not authenticated'},
             status=status.HTTP_401_UNAUTHORIZED
         )
 
 class RegisterView(APIView):
-    permission_classes = [AllowAny]  # Asegúrate de que esta línea esté presente
+    permission_classes = [AllowAny]
  
     def post(self, request):
-        username = request.data.get('username')
-        email = request.data.get('email')
-        password = request.data.get('password')
-        if User.objects.filter(username=username).exists():
-            return Response({'error': 'El nombre de usuario ya existe'}, status=status.HTTP_400_BAD_REQUEST)
-        user = User.objects.create_user(username=username, email=email, password=password)
-        return Response({'message': 'Usuario creado exitosamente'}, status=status.HTTP_201_CREATED)
-
-class OrderViewSet(viewsets.ModelViewSet):
-    queryset = Order.objects.all()
-    serializer_class = OrderSerializer
-    permission_classes = [IsAuthenticated]
-
-    def get_serializer_context(self):
-        context = super().get_serializer_context()
-        context['request'] = self.request
-        return context
-
-    def create(self, request):
-        data = request.data
-        user = request.user
-        company_id = data.get('company')
-        items = data.get('items', [])
-
-        if not company_id or not items:
-            return Response({"error": "Datos de pedido incompletos"}, status=status.HTTP_400_BAD_REQUEST)
-
-        total = sum(item['price'] * item['quantity'] for item in items)
-        order = Order.objects.create(user=user, company_id=company_id, total=total)
-
-        for item in items:
-            OrderItem.objects.create(
-                order=order,
-                product_id=item['product'],
-                quantity=item['quantity'],
-                price=item['price']
-            )
-
-        serializer = self.get_serializer(order)
-        return Response(serializer.data, status=status.HTTP_201_CREATED)
-
-    def get_queryset(self):
-        user = self.request.user
-        return Order.objects.filter(user=user)
-
-logger = logging.getLogger(__name__)
+        try:
+            username = request.data.get('username')
+            email = request.data.get('email')
+            password = request.data.get('password')
+            if User.objects.filter(username=username).exists():
+                return Response({'error': 'Username already exists'}, status=status.HTTP_400_BAD_REQUEST)
+            user = User.objects.create_user(username=username, email=email, password=password)
+            return Response({'message': 'User created successfully'}, status=status.HTTP_201_CREATED)
+        except Exception as e:
+            logger.error(f"Error in user registration: {str(e)}")
+            return Response({'error': 'An error occurred during registration'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 class TopBurgerSectionView(APIView):
     permission_classes = [AllowAny]
     
     def get(self, request):
         try:
-            # Obtener todas las secciones ordenadas por posición
-            sections = TopBurgerSection.objects.all()
-            
+            sections = TopBurgerSection.objects.all().order_by('position')
             serializer = TopBurgerSectionSerializer(
                 sections, 
                 many=True,
                 context={'request': request}
             )
             return Response(serializer.data)
-            
         except Exception as e:
             logger.error(f"Error in TopBurgerSectionView: {str(e)}")
             return Response({
-                "error": str(e)
-            }, status=500)
+                "error": "An error occurred while fetching top burger sections"
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 class TopBurgerItemSerializer(serializers.ModelSerializer):
     company_name = serializers.SerializerMethodField()
@@ -380,8 +371,8 @@ class TopBurgerItemSerializer(serializers.ModelSerializer):
             'company_profile_url',
             'featured_image',
             'order',
-            'item_type',  # Añadimos el campo item_type aquí
-            'custom_url'  # También incluimos custom_url para elementos de tipo banner
+            'item_type',
+            'custom_url'
         ]
 
     def get_company_name(self, obj):
@@ -410,7 +401,6 @@ class TopBurgerSectionSerializer(serializers.ModelSerializer):
         fields = ['title', 'location', 'items']
 
     def to_representation(self, instance):
-        # Asegurarnos de que items sea una lista vacía si no hay items
         representation = super().to_representation(instance)
         if not representation.get('items'):
             representation['items'] = []
