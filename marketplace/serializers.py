@@ -5,7 +5,25 @@ from .models import BusinessHours
 class BusinessHoursSerializer(serializers.ModelSerializer):
     class Meta:
         model = BusinessHours
-        fields = ['open_days', 'open_time', 'close_time']
+        exclude = ('id', 'company')
+
+    def to_representation(self, instance):
+        data = super().to_representation(instance)
+        formatted_hours = {}
+        days = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday']
+        
+        for day in days:
+            open_time = data.get(f'{day}_open')
+            close_time = data.get(f'{day}_close')
+            if open_time and close_time:
+                formatted_hours[day] = {
+                    'open': open_time,
+                    'close': close_time
+                }
+            else:
+                formatted_hours[day] = None
+                
+        return formatted_hours
 
 class CompanyCategorySerializer(serializers.ModelSerializer):
     class Meta:
