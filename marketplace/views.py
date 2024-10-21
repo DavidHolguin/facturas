@@ -1,6 +1,6 @@
 from rest_framework import serializers  # Asegúrate de importar serializers
 from rest_framework import viewsets
-from .models import Company, Category, Product, Order, OrderItem, CompanyCategory, Country, TopBurgerSection, TopBurgerItem
+from .models import Company, Category, Product, Order, OrderItem, BusinessHours, CompanyCategory, Country, TopBurgerSection, TopBurgerItem
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
@@ -61,17 +61,44 @@ class CompanyViewSet(viewsets.ModelViewSet):
         context['request'] = self.request
         return context
 
-    def get_queryset(self):
-        queryset = Company.objects.all()
-        category = self.request.query_params.get('category', None)
-        country = self.request.query_params.get('country', None)
-        
-        if category is not None:
-            queryset = queryset.filter(category__id=category)
-        if country is not None:
-            queryset = queryset.filter(country__id=country)
-            
-        return queryset
+    def create(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        company = self.perform_create(serializer)
+
+        # Crear el horario de atención
+        business_hours_data = request.data.get('business_hours', {})
+        business_hours = BusinessHours.objects.create(
+            company=company,
+            open_days=business_hours_data.get('open_days', []),
+            open_time=business_hours_data.get('open_time'),
+            close_time=business_hours_data.get('close_time')
+        )
+
+        headers = self.get_success_headers(serializer.data)
+        return Response(serializer.data, status=status.HTTP_201_CREATED, headers=headers)
+
+    def update(self, request, *args, **kwargs):
+        partial = kwargs.pop('partial', False)
+        instance = self.get_object()
+        serializer = self.get_serializer(instance, data=request.data, partial=partial)
+        serializer.is_valid(raise_exception=True)
+        self.perform_update(serializer)
+
+        # Actualizar el horario de atención
+        business_hours = instance.business_hours
+        business_hours_data = request.data.get('business_hours', {})
+        business_hours.open_days = business_hours_data.get('open_days', [])
+        business_hours.open_time = business_hours_data.get('open_time')
+        business_hours.close_time = business_hours_data.get('close_time')
+        business_hours.save()
+
+        if getattr(instance, '_prefetched_objects_cache', None):
+            # If 'prefetch_related' has been applied to a queryset, we need to
+            # forcibly invalidate the prefetch cache on the instance.
+            instance._prefetched_objects_cache = {}
+
+        return Response(serializer.data)
 
 class CategoryViewSet(viewsets.ModelViewSet):
     queryset = Category.objects.all()

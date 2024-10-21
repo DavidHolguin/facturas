@@ -1,6 +1,11 @@
 from rest_framework import serializers
 from .models import Company, Category, Product, Order, OrderItem, CompanyCategory, Country, TopBurgerSection, TopBurgerItem
+from .models import BusinessHours
 
+class BusinessHoursSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = BusinessHours
+        fields = ['open_days', 'open_time', 'close_time']
 
 class CompanyCategorySerializer(serializers.ModelSerializer):
     class Meta:
@@ -28,6 +33,7 @@ class CompanySerializer(serializers.ModelSerializer):
     cover_photo_url = serializers.SerializerMethodField()
     category = CompanyCategorySerializer(read_only=False, required=False)
     country = CountrySerializer(read_only=False, required=False)
+    business_hours = BusinessHoursSerializer(read_only=False, required=False)
 
     class Meta:
         model = Company
@@ -148,3 +154,5 @@ class TopBurgerSectionSerializer(serializers.ModelSerializer):
     class Meta:
         model = TopBurgerSection
         fields = ['id', 'title', 'location', 'position', 'items']
+        
+

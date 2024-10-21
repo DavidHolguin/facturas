@@ -216,3 +216,25 @@ class TopBurgerItem(models.Model):
         if self.item_type == 'COMPANY':
             return f"{self.company.name if self.company else 'Sin compañía'} - Posición {self.order}"
         return f"Banner - Posición {self.order}"
+    
+class BusinessHours(models.Model):
+    company = models.OneToOneField(
+        Company,
+        on_delete=models.CASCADE,
+        related_name='business_hours'
+    )
+    WEEKDAYS = [
+        ('mon', 'Lunes'),
+        ('tue', 'Martes'),
+        ('wed', 'Miércoles'),
+        ('thu', 'Jueves'),
+        ('fri', 'Viernes'),
+        ('sat', 'Sábado'),
+        ('sun', 'Domingo'),
+    ]
+    open_days = models.JSONField(default=list)
+    open_time = models.TimeField()
+    close_time = models.TimeField()
+
+    def __str__(self):
+        return f"{self.company.name} - Horario de atención"
