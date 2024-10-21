@@ -35,6 +35,7 @@ class Country(models.Model):
         ('PY', '🇵🇾 Paraguay'),
         ('PE', '🇵🇪 Perú'),
         ('PR', '🇵🇷 Puerto Rico'),
+        ('US', '🇺🇸 Estados Unidos'),
         ('UY', '🇺🇾 Uruguay'),
         ('VE', '🇻🇪 Venezuela'),
     ]
