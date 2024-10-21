@@ -3,6 +3,7 @@ from django.contrib.auth.models import User
 from django.core.validators import MaxValueValidator, MinValueValidator
 from cloudinary.models import CloudinaryField
 from django.core.validators import RegexValidator
+from django.core.exceptions import ValidationError
 
 class CompanyCategory(models.Model):
     name = models.CharField(max_length=100)
@@ -217,23 +218,41 @@ class TopBurgerItem(models.Model):
         return f"Banner - Posición {self.order}"
 
 class BusinessHours(models.Model):
-    company = models.OneToOneField(
-        Company,
-        on_delete=models.CASCADE,
-        related_name='business_hours'
-    )
-    WEEKDAYS = [
-        ('mon', 'Lunes'),
-        ('tue', 'Martes'),
-        ('wed', 'Miércoles'),
-        ('thu', 'Jueves'),
-        ('fri', 'Viernes'),
-        ('sat', 'Sábado'),
-        ('sun', 'Domingo'),
+    DAYS_OF_WEEK = [
+        ('monday', 'Lunes'),
+        ('tuesday', 'Martes'),
+        ('wednesday', 'Miércoles'),
+        ('thursday', 'Jueves'),
+        ('friday', 'Viernes'),
+        ('saturday', 'Sábado'),
+        ('sunday', 'Domingo'),
     ]
-    open_days = models.JSONField(default=list)
-    open_time = models.TimeField()
-    close_time = models.TimeField()
+
+    company = models.OneToOneField('Company', on_delete=models.CASCADE, related_name='business_hours')
+    
+    monday_open = models.TimeField(null=True, blank=True)
+    monday_close = models.TimeField(null=True, blank=True)
+    tuesday_open = models.TimeField(null=True, blank=True)
+    tuesday_close = models.TimeField(null=True, blank=True)
+    wednesday_open = models.TimeField(null=True, blank=True)
+    wednesday_close = models.TimeField(null=True, blank=True)
+    thursday_open = models.TimeField(null=True, blank=True)
+    thursday_close = models.TimeField(null=True, blank=True)
+    friday_open = models.TimeField(null=True, blank=True)
+    friday_close = models.TimeField(null=True, blank=True)
+    saturday_open = models.TimeField(null=True, blank=True)
+    saturday_close = models.TimeField(null=True, blank=True)
+    sunday_open = models.TimeField(null=True, blank=True)
+    sunday_close = models.TimeField(null=True, blank=True)
+
+    def clean(self):
+        for day in [day[0] for day in self.DAYS_OF_WEEK]:
+            open_time = getattr(self, f'{day}_open')
+            close_time = getattr(self, f'{day}_close')
+            if (open_time and not close_time) or (close_time and not open_time):
+                raise ValidationError(f'{day.capitalize()}: Debe especificar tanto la hora de apertura como la de cierre.')
+            if open_time and close_time and open_time >= close_time:
+                raise ValidationError(f'{day.capitalize()}: La hora de cierre debe ser posterior a la hora de apertura.')
 
     def __str__(self):
-        return f"{self.company.name} - Horario de atención"
+        return f"Horario de {self.company.name}"

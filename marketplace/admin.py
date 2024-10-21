@@ -1,5 +1,3 @@
-# marketplace/admin.py
-
 from django.contrib import admin
 from .models import Company, Category, Product, BusinessHours, Order, OrderItem, TopBurgerSection, TopBurgerItem, CompanyCategory, Country
 
@@ -58,3 +56,4 @@ class CountryAdmin(admin.ModelAdmin):
     list_display = ('name', 'code')
     search_fields = ('name', 'code')
     list_per_page = 20
+

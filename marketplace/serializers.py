@@ -50,45 +50,59 @@ class CompanySerializer(serializers.ModelSerializer):
         return None
 
     def create(self, validated_data):
+        # Extraer los datos anidados
         category_data = validated_data.pop('category', None)
         country_data = validated_data.pop('country', None)
         business_hours_data = validated_data.pop('business_hours', None)
         
+        # Crear o actualizar category
         if category_data:
             category, _ = CompanyCategory.objects.get_or_create(**category_data)
             validated_data['category'] = category
             
+        # Crear o actualizar country
         if country_data:
             country, _ = Country.objects.get_or_create(**country_data)
             validated_data['country'] = country
         
-        company = super().create(validated_data)
+        # Crear la compañía
+        company = Company.objects.create(**validated_data)
         
+        # Crear business_hours si existen
         if business_hours_data:
             BusinessHours.objects.create(company=company, **business_hours_data)
         
         return company
 
     def update(self, instance, validated_data):
+        # Extraer los datos anidados
         category_data = validated_data.pop('category', None)
         country_data = validated_data.pop('country', None)
         business_hours_data = validated_data.pop('business_hours', None)
         
+        # Actualizar category
         if category_data:
             category, _ = CompanyCategory.objects.get_or_create(**category_data)
             validated_data['category'] = category
             
+        # Actualizar country
         if country_data:
             country, _ = Country.objects.get_or_create(**country_data)
             validated_data['country'] = country
         
+        # Actualizar business_hours
         if business_hours_data:
             business_hours, created = BusinessHours.objects.get_or_create(company=instance)
             for attr, value in business_hours_data.items():
                 setattr(business_hours, attr, value)
             business_hours.save()
         
-        return super().update(instance, validated_data)
+        # Actualizar los campos restantes de la compañía
+        for attr, value in validated_data.items():
+            setattr(instance, attr, value)
+        instance.save()
+        
+        return instance
 
 class CategorySerializer(serializers.ModelSerializer):
     class Meta:
