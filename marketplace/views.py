@@ -64,11 +64,11 @@ class CompanyViewSet(viewsets.ModelViewSet):
     def create(self, request, *args, **kwargs):
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
-        company = self.perform_create(serializer)
+        company = serializer.save()
 
         # Crear el horario de atención
         business_hours_data = request.data.get('business_hours', {})
-        business_hours = BusinessHours.objects.create(
+        BusinessHours.objects.create(
             company=company,
             open_days=business_hours_data.get('open_days', []),
             open_time=business_hours_data.get('open_time'),
@@ -86,19 +86,35 @@ class CompanyViewSet(viewsets.ModelViewSet):
         self.perform_update(serializer)
 
         # Actualizar el horario de atención
-        business_hours = instance.business_hours
         business_hours_data = request.data.get('business_hours', {})
-        business_hours.open_days = business_hours_data.get('open_days', [])
-        business_hours.open_time = business_hours_data.get('open_time')
-        business_hours.close_time = business_hours_data.get('close_time')
+        business_hours, created = BusinessHours.objects.get_or_create(company=instance)
+        business_hours.open_days = business_hours_data.get('open_days', business_hours.open_days)
+        business_hours.open_time = business_hours_data.get('open_time', business_hours.open_time)
+        business_hours.close_time = business_hours_data.get('close_time', business_hours.close_time)
         business_hours.save()
 
         if getattr(instance, '_prefetched_objects_cache', None):
-            # If 'prefetch_related' has been applied to a queryset, we need to
-            # forcibly invalidate the prefetch cache on the instance.
             instance._prefetched_objects_cache = {}
 
         return Response(serializer.data)
+
+    def retrieve(self, request, *args, **kwargs):
+        instance = self.get_object()
+        serializer = self.get_serializer(instance)
+        data = serializer.data
+        
+        # Incluir los datos de horario de atención en la respuesta
+        try:
+            business_hours = instance.business_hours
+            data['business_hours'] = {
+                'open_days': business_hours.open_days,
+                'open_time': business_hours.open_time,
+                'close_time': business_hours.close_time
+            }
+        except BusinessHours.DoesNotExist:
+            data['business_hours'] = None
+
+        return Response(data)
 
 class CategoryViewSet(viewsets.ModelViewSet):
     queryset = Category.objects.all()

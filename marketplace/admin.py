@@ -4,10 +4,24 @@ from django.contrib import admin
 from .models import Company, Category, Product, BusinessHours, Order, OrderItem, TopBurgerSection, TopBurgerItem, CompanyCategory, Country
 
 
+class BusinessHoursInline(admin.StackedInline):
+    model = BusinessHours
+    can_delete = False
+    verbose_name_plural = 'Horario de atención'
+
 @admin.register(Company)
 class CompanyAdmin(admin.ModelAdmin):
-    list_display = ('name', 'user', 'phone', 'address')
+    list_display = ('name', 'user', 'phone', 'address', 'get_business_hours')
     search_fields = ('name', 'user__username')
+    inlines = [BusinessHoursInline]
+
+    def get_business_hours(self, obj):
+        try:
+            hours = obj.business_hours
+            return f"{', '.join(hours.open_days)} {hours.open_time} - {hours.close_time}"
+        except BusinessHours.DoesNotExist:
+            return "No establecido"
+    get_business_hours.short_description = 'Horario de atención'
 
 @admin.register(Category)
 class CategoryAdmin(admin.ModelAdmin):
@@ -44,13 +58,3 @@ class CountryAdmin(admin.ModelAdmin):
     list_display = ('name', 'code')
     search_fields = ('name', 'code')
     list_per_page = 20
-
-@admin.register(BusinessHours)
-class BusinessHoursAdmin(admin.ModelAdmin):
-    list_display = ('company', 'open_time', 'close_time')
-    search_fields = ('company__name',)
-    list_filter = ('open_days',)
-
-    def get_open_days(self, obj):
-        return ", ".join(obj.open_days)
-    get_open_days.short_description = 'Open Days'
