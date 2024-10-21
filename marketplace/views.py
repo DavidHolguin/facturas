@@ -136,25 +136,13 @@ class CompanyViewSet(viewsets.ModelViewSet):
         try:
             instance = self.get_object()
             serializer = self.get_serializer(instance)
-            data = serializer.data
-
-            if hasattr(instance, 'business_hours'):
-                business_hours = instance.business_hours
-                data['business_hours'] = {
-                    'open_days': business_hours.open_days,
-                    'open_time': business_hours.open_time,
-                    'close_time': business_hours.close_time
-                }
-            else:
-                data['business_hours'] = None
-
-            return Response(data)
+            return Response(serializer.data)
         except Company.DoesNotExist:
             return Response({'error': 'Company not found'}, status=status.HTTP_404_NOT_FOUND)
         except Exception as e:
-            logger.error(f"Error retrieving company: {str(e)}")
+            logger.error(f"Error retrieving company: {str(e)}", exc_info=True)
             return Response({'error': 'An unexpected error occurred'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-
+        
 class CategoryViewSet(viewsets.ModelViewSet):
     queryset = Category.objects.all()
     serializer_class = CategorySerializer
