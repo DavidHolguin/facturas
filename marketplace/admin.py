@@ -1,7 +1,7 @@
 # marketplace/admin.py
 
 from django.contrib import admin
-from .models import Company, Category, Product, Order, OrderItem, TopBurgerSection, TopBurgerItem, CompanyCategory, Country
+from .models import Company, Category, Product, BusinessHours, Order, OrderItem, TopBurgerSection, TopBurgerItem, CompanyCategory, Country
 
 
 @admin.register(Company)
@@ -34,7 +34,6 @@ class OrderItemAdmin(admin.ModelAdmin):
 admin.site.register(TopBurgerSection)
 admin.site.register(TopBurgerItem)
 
-
 @admin.register(CompanyCategory)
 class CompanyCategoryAdmin(admin.ModelAdmin):
     list_display = ('name',)
@@ -45,3 +44,13 @@ class CountryAdmin(admin.ModelAdmin):
     list_display = ('name', 'code')
     search_fields = ('name', 'code')
     list_per_page = 20
+
+@admin.register(BusinessHours)
+class BusinessHoursAdmin(admin.ModelAdmin):
+    list_display = ('company', 'open_time', 'close_time')
+    search_fields = ('company__name',)
+    list_filter = ('open_days',)
+
+    def get_open_days(self, obj):
+        return ", ".join(obj.open_days)
+    get_open_days.short_description = 'Open Days'
