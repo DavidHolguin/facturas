@@ -24,7 +24,32 @@ class CompanyCategoryViewSet(viewsets.ModelViewSet):
 class CountryViewSet(viewsets.ModelViewSet):
     queryset = Country.objects.all()
     serializer_class = CountrySerializer
-    permission_classes = [AllowAny]
+    permission_classes = [IsAuthenticatedOrReadOnly]
+
+    @action(detail=False, methods=['get'])
+    def available_countries(self, request):
+        """
+        Endpoint para obtener la lista de países disponibles con sus banderas
+        """
+        countries = [
+            {
+                'code': code,
+                'name': name.split(maxsplit=1)[1],  # Removemos el emoji del nombre
+                'flag_emoji': name.split()[0]  # Obtenemos solo el emoji
+            }
+            for code, name in Country.COUNTRY_CHOICES
+        ]
+        return Response(countries)
+
+    def create(self, request, *args, **kwargs):
+        # Validar que el código del país esté en las opciones disponibles
+        code = request.data.get('code')
+        if code not in dict(Country.COUNTRY_CHOICES):
+            return Response(
+                {'error': 'El código del país no es válido. Debe ser uno de los países disponibles.'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        return super().create(request, *args, **kwargs)
 
 class CompanyViewSet(viewsets.ModelViewSet):
     queryset = Company.objects.all()

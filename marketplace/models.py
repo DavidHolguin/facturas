@@ -2,6 +2,7 @@ from django.db import models
 from django.contrib.auth.models import User
 from django.core.validators import MaxValueValidator, MinValueValidator
 from cloudinary.models import CloudinaryField
+from django.core.validators import RegexValidator
 
 class CompanyCategory(models.Model):
     name = models.CharField(max_length=100)
@@ -15,15 +16,62 @@ class CompanyCategory(models.Model):
         verbose_name_plural = "Categorías de empresas"
 
 class Country(models.Model):
+    COUNTRY_CHOICES = [
+        ('AR', '🇦🇷 Argentina'),
+        ('BO', '🇧🇴 Bolivia'),
+        ('BR', '🇧🇷 Brasil'),
+        ('CL', '🇨🇱 Chile'),
+        ('CO', '🇨🇴 Colombia'),
+        ('CR', '🇨🇷 Costa Rica'),
+        ('CU', '🇨🇺 Cuba'),
+        ('DO', '🇩🇴 República Dominicana'),
+        ('EC', '🇪🇨 Ecuador'),
+        ('SV', '🇸🇻 El Salvador'),
+        ('GT', '🇬🇹 Guatemala'),
+        ('HN', '🇭🇳 Honduras'),
+        ('MX', '🇲🇽 México'),
+        ('NI', '🇳🇮 Nicaragua'),
+        ('PA', '🇵🇦 Panamá'),
+        ('PY', '🇵🇾 Paraguay'),
+        ('PE', '🇵🇪 Perú'),
+        ('PR', '🇵🇷 Puerto Rico'),
+        ('UY', '🇺🇾 Uruguay'),
+        ('VE', '🇻🇪 Venezuela'),
+    ]
+
     name = models.CharField(max_length=100)
-    code = models.CharField(max_length=3, unique=True)  # Código ISO del país
-    
+    code = models.CharField(
+        max_length=2,
+        choices=COUNTRY_CHOICES,
+        unique=True,
+        validators=[
+            RegexValidator(
+                regex='^[A-Z]{2}$',
+                message='El código del país debe ser de 2 letras mayúsculas',
+            ),
+        ]
+    )
+    flag_icon = CloudinaryField(
+        'image',
+        folder='country_flags/',
+        null=True,
+        blank=True,
+        help_text="Icono de la bandera del país (opcional)"
+    )
+
+    def get_flag_emoji(self):
+        # Convierte el código de país a emoji de bandera
+        if self.code:
+            return next((choice[1].split()[0] for choice in self.COUNTRY_CHOICES if choice[0] == self.code), '')
+        return ''
+
     def __str__(self):
-        return self.name
+        return f"{self.get_flag_emoji()} {self.name}"
 
     class Meta:
         verbose_name = "País"
         verbose_name_plural = "Países"
+        ordering = ['name']
 
 class Company(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE)

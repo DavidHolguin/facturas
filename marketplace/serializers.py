@@ -8,9 +8,20 @@ class CompanyCategorySerializer(serializers.ModelSerializer):
         fields = ['id', 'name', 'description']
 
 class CountrySerializer(serializers.ModelSerializer):
+    flag_emoji = serializers.SerializerMethodField()
+    flag_icon_url = serializers.SerializerMethodField()
+
     class Meta:
         model = Country
-        fields = ['id', 'name', 'code']
+        fields = ['id', 'name', 'code', 'flag_emoji', 'flag_icon_url']
+
+    def get_flag_emoji(self, obj):
+        return obj.get_flag_emoji()
+
+    def get_flag_icon_url(self, obj):
+        if obj.flag_icon:
+            return obj.flag_icon.url
+        return None
 
 class CompanySerializer(serializers.ModelSerializer):
     profile_picture_url = serializers.SerializerMethodField()
