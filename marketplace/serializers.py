@@ -1,6 +1,7 @@
 from rest_framework import serializers
 from .models import Company, Category, Product, Order, OrderItem, CompanyCategory, Country, TopBurgerSection, TopBurgerItem
 from .models import BusinessHours
+from django.db import transaction
 
 class BusinessHoursSerializer(serializers.ModelSerializer):
     class Meta:
@@ -24,7 +25,7 @@ class BusinessHoursSerializer(serializers.ModelSerializer):
                 formatted_hours[day] = None
                 
         return formatted_hours
-
+    
 class CompanyCategorySerializer(serializers.ModelSerializer):
     class Meta:
         model = CompanyCategory
@@ -67,60 +68,71 @@ class CompanySerializer(serializers.ModelSerializer):
             return obj.cover_photo.url
         return None
 
+    @transaction.atomic
     def create(self, validated_data):
-        # Extraer los datos anidados
-        category_data = validated_data.pop('category', None)
-        country_data = validated_data.pop('country', None)
-        business_hours_data = validated_data.pop('business_hours', None)
-        
-        # Crear o actualizar category
-        if category_data:
-            category, _ = CompanyCategory.objects.get_or_create(**category_data)
-            validated_data['category'] = category
+        try:
+            # Extraer los datos anidados
+            category_data = validated_data.pop('category', None)
+            country_data = validated_data.pop('country', None)
+            business_hours_data = validated_data.pop('business_hours', None)
             
-        # Crear o actualizar country
-        if country_data:
-            country, _ = Country.objects.get_or_create(**country_data)
-            validated_data['country'] = country
-        
-        # Crear la compañía
-        company = Company.objects.create(**validated_data)
-        
-        # Crear business_hours si existen
-        if business_hours_data:
-            BusinessHours.objects.create(company=company, **business_hours_data)
-        
-        return company
+            # Crear o actualizar category
+            if category_data:
+                category, _ = CompanyCategory.objects.get_or_create(**category_data)
+                validated_data['category'] = category
+                
+            # Crear o actualizar country
+            if country_data:
+                country, _ = Country.objects.get_or_create(**country_data)
+                validated_data['country'] = country
+            
+            # Crear la compañía
+            company = Company.objects.create(**validated_data)
+            
+            # Crear business_hours si existen
+            if business_hours_data:
+                BusinessHours.objects.create(company=company, **business_hours_data)
+            
+            return company
+        except Exception as e:
+            # Log the error or handle it as needed
+            raise serializers.ValidationError(f"Error creating company: {str(e)}")
 
+    @transaction.atomic
     def update(self, instance, validated_data):
-        # Extraer los datos anidados
-        category_data = validated_data.pop('category', None)
-        country_data = validated_data.pop('country', None)
-        business_hours_data = validated_data.pop('business_hours', None)
-        
-        # Actualizar category
-        if category_data:
-            category, _ = CompanyCategory.objects.get_or_create(**category_data)
-            validated_data['category'] = category
+        try:
+            # Extraer los datos anidados
+            category_data = validated_data.pop('category', None)
+            country_data = validated_data.pop('country', None)
+            business_hours_data = validated_data.pop('business_hours', None)
             
-        # Actualizar country
-        if country_data:
-            country, _ = Country.objects.get_or_create(**country_data)
-            validated_data['country'] = country
-        
-        # Actualizar business_hours
-        if business_hours_data:
-            business_hours, created = BusinessHours.objects.get_or_create(company=instance)
-            for attr, value in business_hours_data.items():
-                setattr(business_hours, attr, value)
-            business_hours.save()
-        
-        # Actualizar los campos restantes de la compañía
-        for attr, value in validated_data.items():
-            setattr(instance, attr, value)
-        instance.save()
-        
-        return instance
+            # Actualizar category
+            if category_data:
+                category, _ = CompanyCategory.objects.get_or_create(**category_data)
+                validated_data['category'] = category
+                
+            # Actualizar country
+            if country_data:
+                country, _ = Country.objects.get_or_create(**country_data)
+                validated_data['country'] = country
+            
+            # Actualizar business_hours
+            if business_hours_data:
+                business_hours, created = BusinessHours.objects.get_or_create(company=instance)
+                for attr, value in business_hours_data.items():
+                    setattr(business_hours, attr, value)
+                business_hours.save()
+            
+            # Actualizar los campos restantes de la compañía
+            for attr, value in validated_data.items():
+                setattr(instance, attr, value)
+            instance.save()
+            
+            return instance
+        except Exception as e:
+            # Log the error or handle it as needed
+            raise serializers.ValidationError(f"Error updating company: {str(e)}")
+
 
 class CategorySerializer(serializers.ModelSerializer):
     class Meta:
