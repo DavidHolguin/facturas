@@ -106,17 +106,29 @@ class PromotionSerializer(serializers.ModelSerializer):
         return f"${obj.discount_value}"
 
     def validate(self, data):
+        # Convertir el valor del descuento a entero si está presente
+        if 'discount_value' in data:
+            try:
+                data['discount_value'] = int(round(float(data['discount_value'])))
+            except (TypeError, ValueError):
+                raise serializers.ValidationError({
+                    'discount_value': 'El valor del descuento debe ser un número válido'
+                })
+
+        # Validar que el producto pertenezca a la compañía
         if 'product' in data and data.get('product') and data.get('company'):
             if data['product'].company != data['company']:
                 raise serializers.ValidationError({
                     'product': 'El producto debe pertenecer a la compañía seleccionada'
                 })
 
+        # Validar el porcentaje máximo
         if data.get('discount_type') == 'PERCENTAGE' and data.get('discount_value', 0) > 100:
             raise serializers.ValidationError({
                 'discount_value': 'El porcentaje de descuento no puede ser mayor a 100%'
-            })
+                })
 
+        # Validar las fechas
         if data.get('end_date') and data.get('start_date'):
             if data['end_date'] <= data['start_date']:
                 raise serializers.ValidationError({
@@ -125,6 +137,17 @@ class PromotionSerializer(serializers.ModelSerializer):
 
         return data
 
+    def create(self, validated_data):
+        # Asegurar que el valor del descuento sea entero
+        if 'discount_value' in validated_data:
+            validated_data['discount_value'] = int(round(float(validated_data['discount_value'])))
+        return super().create(validated_data)
+
+    def update(self, instance, validated_data):
+        # Asegurar que el valor del descuento sea entero
+        if 'discount_value' in validated_data:
+            validated_data['discount_value'] = int(round(float(validated_data['discount_value'])))
+        return super().update(instance, validated_data)
 
 class CompanySerializer(serializers.ModelSerializer):
     profile_picture_url = serializers.SerializerMethodField()

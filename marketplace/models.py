@@ -257,15 +257,6 @@ class BusinessHours(models.Model):
     def __str__(self):
         return f"Horario de {self.company.name}"
     
-from django.db import models
-from django.core.validators import MinValueValidator, MaxValueValidator
-from cloudinary.models import CloudinaryField
-from django.core.exceptions import ValidationError
-
-from django.db import models
-from django.core.validators import MinValueValidator
-from django.core.exceptions import ValidationError
-from cloudinary.models import CloudinaryField
 
 class Promotion(models.Model):
     DISCOUNT_TYPE_CHOICES = [
@@ -310,9 +301,7 @@ class Promotion(models.Model):
         choices=DISCOUNT_TYPE_CHOICES,
         verbose_name="Tipo de Descuento"
     )
-    discount_value = models.DecimalField(
-        max_digits=10,
-        decimal_places=2,
+    discount_value = models.IntegerField(  # Cambiado a IntegerField
         validators=[MinValueValidator(0)],
         verbose_name="Valor del Descuento"
     )
@@ -359,19 +348,13 @@ class Promotion(models.Model):
             })
 
     def save(self, *args, **kwargs):
-        # Asegurarse de que el valor del descuento siempre sea positivo
-        self.discount_value = abs(self.discount_value)
+        self.discount_value = abs(int(round(self.discount_value)))  # Asegurar valor entero positivo
         super().save(*args, **kwargs)
 
     def get_formatted_discount(self):
-        """
-        Retorna el valor del descuento formateado según el tipo:
-        - Para porcentajes: '30%'
-        - Para valores: '$30.00'
-        """
         if self.discount_type == 'PERCENTAGE':
-            return f"{abs(self.discount_value):.0f}%"
-        return f"${abs(self.discount_value):.2f}"
+            return f"{self.discount_value}%"
+        return f"${self.discount_value}"
 
     def __str__(self):
         return f"{self.title} - {self.company.name}"
