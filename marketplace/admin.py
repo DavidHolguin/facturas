@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import Company, Category, Product, BusinessHours,  CompanyCategory
+from .models import Company, Category, Product, BusinessHours, Promotion, TopBurgerSection, CompanyCategory
 from django.utils.html import format_html
 
 class BusinessHoursInline(admin.StackedInline):
@@ -72,13 +72,27 @@ class ProductAdmin(admin.ModelAdmin):
     list_filter = ('company', 'category')
     search_fields = ('name', 'company__name')
 
+@admin.register(TopBurgerSection)
+class TopBurgerSectionAdmin(admin.ModelAdmin):
+    list_display = ('title', 'description', 'is_active')
+    list_filter = ('is_active',)
+    search_fields = ('title', 'description')
+    
+    fieldsets = (
+        ('Información Básica', {
+            'fields': (
+                'title',
+                'description',
+                'image',
+                'is_active'
+            )
+        }),
+    )
 
 @admin.register(CompanyCategory)
 class CompanyCategoryAdmin(admin.ModelAdmin):
     list_display = ('name',)
     search_fields = ('name', 'description')
-
-
 
 @admin.register(Promotion)
 class PromotionAdmin(admin.ModelAdmin):
