@@ -99,7 +99,7 @@ class CompanyViewSet(viewsets.ModelViewSet):
             'business_hours',
             'category',
             'country',
-            'promotions'  # Añadimos prefetch de promociones
+            'promotions'
         ).select_related(
             'category',
             'country'
@@ -115,51 +115,55 @@ class CompanyViewSet(viewsets.ModelViewSet):
            
         return queryset
 
-    def get_serializer_context(self):
-        context = super().get_serializer_context()
-        context['request'] = self.request
-        return context
-
-    def perform_create(self, serializer):
-        company = serializer.save()
-        self._handle_business_hours(company, self.request.data.get('business_hours', {}))
-        return company
-
-    def perform_update(self, serializer):
-        company = serializer.save()
-        self._handle_business_hours(company, self.request.data.get('business_hours', {}))
-        return company
-
-    def _handle_business_hours(self, company, business_hours_data):
-        if not business_hours_data:
-            return
-
-        business_hours, created = BusinessHours.objects.get_or_create(
-            company=company,
-            defaults={
-                'open_days': business_hours_data.get('open_days', []),
-                'open_time': business_hours_data.get('open_time'),
-                'close_time': business_hours_data.get('close_time')
-            }
-        )
-
-        if not created:
-            business_hours.open_days = business_hours_data.get('open_days', business_hours.open_days)
-            business_hours.open_time = business_hours_data.get('open_time', business_hours.open_time)
-            business_hours.close_time = business_hours_data.get('close_time', business_hours.close_time)
-            business_hours.save()
-
-    def create(self, request, *args, **kwargs):
+    @action(detail=True, methods=['get'])
+    def active_promotions(self, request, pk=None):
+        """
+        Endpoint especial para obtener solo las promociones activas de una empresa.
+        Incluye información detallada de la compañía, producto y categoría.
+        """
         try:
-            serializer = self.get_serializer(data=request.data)
-            serializer.is_valid(raise_exception=True)
-            company = self.perform_create(serializer)
-            headers = self.get_success_headers(serializer.data)
-            return Response(serializer.data, status=status.HTTP_201_CREATED, headers=headers)
-        except Exception as e:
-            logger.error(f"Error creating company: {str(e)}")
+            company = self.get_object()
+            now = timezone.now()
+            
+            # Optimizamos la consulta usando select_related para todas las relaciones necesarias
+            promotions = company.promotions.filter(
+                is_active=True,
+                start_date__lte=now
+            ).filter(
+                Q(end_date__gte=now) | Q(end_date__isnull=True)
+            ).select_related(
+                'company',
+                'product',
+                'category'
+            ).order_by(
+                'end_date',
+                '-created_at'  # Ordenamiento secundario por fecha de creación
+            )
+            
+            serializer = PromotionSerializer(
+                promotions, 
+                many=True, 
+                context={'request': request}  # Importante para resolver URLs completas
+            )
+            
+            response_data = {
+                'count': promotions.count(),
+                'results': serializer.data,
+                'company_id': company.id,
+                'company_name': company.name
+            }
+            
+            return Response(response_data)
+            
+        except Company.DoesNotExist:
             return Response(
-                {'error': 'An error occurred while creating the company'}, 
+                {'error': 'Company not found'}, 
+                status=status.HTTP_404_NOT_FOUND
+            )
+        except Exception as e:
+            logger.error(f"Error retrieving company promotions: {str(e)}")
+            return Response(
+                {'error': 'An error occurred while retrieving promotions'}, 
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
 
@@ -202,18 +206,23 @@ class CompanyViewSet(viewsets.ModelViewSet):
     @action(detail=True, methods=['get'])
     def active_promotions(self, request, pk=None):
         """
-        Endpoint especial para obtener solo las promociones activas de una empresa
+        Endpoint especial para obtener solo las promociones activas de una empresa.
+        Incluye información detallada del producto y su categoría.
         """
         try:
             company = self.get_object()
             now = timezone.now()
             
+            # Optimizamos la consulta usando select_related para producto y categoría
             promotions = company.promotions.filter(
                 is_active=True,
                 start_date__lte=now
             ).filter(
                 Q(end_date__gte=now) | Q(end_date__isnull=True)
-            ).select_related('product', 'category')
+            ).select_related(
+                'product',
+                'product__category'  # Agregamos la relación producto-categoría
+            ).order_by('end_date')  # Ordenamos por fecha de finalización
             
             serializer = PromotionSerializer(
                 promotions, 
@@ -221,7 +230,13 @@ class CompanyViewSet(viewsets.ModelViewSet):
                 context={'request': request}
             )
             
-            return Response(serializer.data)
+            response_data = {
+                'count': promotions.count(),
+                'results': serializer.data
+            }
+            
+            return Response(response_data)
+            
         except Company.DoesNotExist:
             return Response(
                 {'error': 'Company not found'}, 
