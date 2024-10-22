@@ -262,6 +262,11 @@ from django.core.validators import MinValueValidator, MaxValueValidator
 from cloudinary.models import CloudinaryField
 from django.core.exceptions import ValidationError
 
+from django.db import models
+from django.core.validators import MinValueValidator
+from django.core.exceptions import ValidationError
+from cloudinary.models import CloudinaryField
+
 class Promotion(models.Model):
     DISCOUNT_TYPE_CHOICES = [
         ('VALUE', 'Valor'),
@@ -352,6 +357,21 @@ class Promotion(models.Model):
             raise ValidationError({
                 'end_date': 'La fecha de finalización debe ser posterior a la fecha de inicio'
             })
+
+    def save(self, *args, **kwargs):
+        # Asegurarse de que el valor del descuento siempre sea positivo
+        self.discount_value = abs(self.discount_value)
+        super().save(*args, **kwargs)
+
+    def get_formatted_discount(self):
+        """
+        Retorna el valor del descuento formateado según el tipo:
+        - Para porcentajes: '30%'
+        - Para valores: '$30.00'
+        """
+        if self.discount_type == 'PERCENTAGE':
+            return f"{abs(self.discount_value):.0f}%"
+        return f"${abs(self.discount_value):.2f}"
 
     def __str__(self):
         return f"{self.title} - {self.company.name}"
