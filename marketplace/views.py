@@ -255,7 +255,7 @@ class CategoryViewSet(viewsets.ModelViewSet):
     permission_classes = [AllowAny]
 
 class ProductViewSet(viewsets.ModelViewSet):
-    queryset = Product.objects.all()
+    queryset = Product.objects.all().prefetch_related('promotions')
     serializer_class = ProductSerializer
     permission_classes = [AllowAny]
 

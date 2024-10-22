@@ -2,6 +2,9 @@ from rest_framework import serializers
 from .models import Company, Category, Product, Order, OrderItem, CompanyCategory, Country, TopBurgerSection, Promotion, TopBurgerItem
 from .models import BusinessHours
 from django.db import transaction
+from django.utils import timezone
+from django.db.models import Q
+
 
 
 class BusinessHoursSerializer(serializers.ModelSerializer):
@@ -211,6 +214,7 @@ class CategorySerializer(serializers.ModelSerializer):
 
 class ProductSerializer(serializers.ModelSerializer):
     image_url = serializers.SerializerMethodField()
+    active_promotions = serializers.SerializerMethodField()
 
     class Meta:
         model = Product
@@ -220,6 +224,18 @@ class ProductSerializer(serializers.ModelSerializer):
         if obj.image:
             return obj.image.url
         return None
+
+    def get_active_promotions(self, obj):
+        now = timezone.now()
+        promotions = Promotion.objects.filter(
+            product=obj,
+            is_active=True,
+            start_date__lte=now
+        ).filter(
+            Q(end_date__gte=now) | Q(end_date__isnull=True)
+        )
+        return PromotionSerializer(promotions, many=True, context=self.context).data
+
 
 
 class OrderItemSerializer(serializers.ModelSerializer):
