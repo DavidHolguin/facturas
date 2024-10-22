@@ -1,74 +1,62 @@
-# chatbots/views.py
-from rest_framework import viewsets, status
-from rest_framework.decorators import action
-from rest_framework.response import Response
-from rest_framework.permissions import IsAuthenticatedOrReadOnly
-import openai
-from .models import Chatbot, Conversation, Message
-from .serializers import ChatbotSerializer, ConversationSerializer, MessageSerializer
+# chatbots/models.py
 
-class ChatbotViewSet(viewsets.ModelViewSet):
-    queryset = Chatbot.objects.filter(is_public=True)
-    serializer_class = ChatbotSerializer
-    permission_classes = [IsAuthenticatedOrReadOnly]
+from django.db import models
+from django.contrib.auth.models import User
+from cloudinary.models import CloudinaryField
 
-    @action(detail=True, methods=['post'])
-    def chat(self, request, pk=None):
-        chatbot = self.get_object()
-        user = request.user if request.user.is_authenticated else None
-        message_content = request.data.get('message')
-        
-        # Crear o obtener conversación
-        conversation_id = request.data.get('conversation_id')
-        if conversation_id:
-            conversation = Conversation.objects.get(id=conversation_id)
-        else:
-            conversation = Conversation.objects.create(
-                user=user,
-                chatbot=chatbot
-            )
+class ChatbotModel(models.TextChoices):
+    GPT_3_5_TURBO = 'gpt-3.5-turbo', 'GPT-3.5 Turbo'
+    GPT_4 = 'gpt-4', 'GPT-4'
+    GPT_4_TURBO = 'gpt-4-turbo-preview', 'GPT-4 Turbo'
 
-        # Guardar mensaje del usuario
-        Message.objects.create(
-            conversation=conversation,
-            role='user',
-            content=message_content
-        )
+class Chatbot(models.Model):
+    name = models.CharField(max_length=100)
+    description = models.TextField()
+    company = models.ForeignKey('marketplace.Company', on_delete=models.CASCADE, related_name='chatbots')
+    model = models.CharField(
+        max_length=50,
+        choices=ChatbotModel.choices,
+        default=ChatbotModel.GPT_3_5_TURBO
+    )
+    api_key = models.CharField(max_length=255)
+    system_prompt = models.TextField(
+        help_text="El prompt inicial que define el comportamiento del chatbot"
+    )
+    logo = CloudinaryField('logo', null=True, blank=True)
+    is_active = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
 
-        # Preparar mensajes para OpenAI
-        messages = [
-            {"role": "system", "content": chatbot.system_prompt}
-        ]
-        
-        # Agregar historial de mensajes
-        previous_messages = Message.objects.filter(conversation=conversation).order_by('timestamp')
-        for msg in previous_messages:
-            messages.append({"role": msg.role, "content": msg.content})
+    def __str__(self):
+        return f"{self.name} - {self.company.name}"
 
-        try:
-            # Configurar OpenAI
-            openai.api_key = chatbot.api_key
-            
-            # Realizar llamada a OpenAI
-            response = openai.ChatCompletion.create(
-                model=chatbot.model.model_identifier,
-                messages=messages
-            )
+class Conversation(models.Model):
+    chatbot = models.ForeignKey(Chatbot, on_delete=models.CASCADE, related_name='conversations')
+    user = models.ForeignKey(User, on_delete=models.CASCADE, null=True, blank=True)
+    session_id = models.CharField(max_length=100, null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
 
-            # Guardar respuesta del asistente
-            assistant_message = response.choices[0].message.content
-            Message.objects.create(
-                conversation=conversation,
-                role='assistant',
-                content=assistant_message
-            )
+    class Meta:
+        ordering = ['-updated_at']
 
-            return Response({
-                'conversation_id': conversation.id,
-                'message': assistant_message
-            })
-            
-        except Exception as e:
-            return Response({
-                'error': str(e)
-            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+    def __str__(self):
+        return f"Conversation with {self.chatbot.name}"
+
+class Message(models.Model):
+    ROLE_CHOICES = [
+        ('user', 'User'),
+        ('assistant', 'Assistant'),
+        ('system', 'System'),
+    ]
+
+    conversation = models.ForeignKey(Conversation, on_delete=models.CASCADE, related_name='messages')
+    role = models.CharField(max_length=10, choices=ROLE_CHOICES)
+    content = models.TextField()
+    timestamp = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['timestamp']
+
+    def __str__(self):
+        return f"{self.role}: {self.content[:50]}..."

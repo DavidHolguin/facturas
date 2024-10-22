@@ -72,22 +72,6 @@ class ProductAdmin(admin.ModelAdmin):
     list_filter = ('company', 'category')
     search_fields = ('name', 'company__name')
 
-@admin.register(TopBurgerSection)
-class TopBurgerSectionAdmin(admin.ModelAdmin):
-    list_display = ('title', 'description', 'is_active')
-    list_filter = ('is_active',)
-    search_fields = ('title', 'description')
-    
-    fieldsets = (
-        ('Información Básica', {
-            'fields': (
-                'title',
-                'description',
-                'image',
-                'is_active'
-            )
-        }),
-    )
 
 @admin.register(CompanyCategory)
 class CompanyCategoryAdmin(admin.ModelAdmin):

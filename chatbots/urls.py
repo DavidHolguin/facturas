@@ -9,3 +9,6 @@ router.register(r'chatbots', ChatbotViewSet)
 urlpatterns = [
     path('', include(router.urls)),
 ]
+
+# En backend/urls.py añadir:
+path('api/', include('chatbots.urls')),
