@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import Company, Category, Product, Order, OrderItem, CompanyCategory, Country, TopBurgerSection, TopBurgerItem
+from .models import Company, Category, Product, Order, OrderItem, CompanyCategory, Country, TopBurgerSection, Promotion, TopBurgerItem
 from .models import BusinessHours
 from django.db import transaction
 
@@ -213,3 +213,76 @@ class TopBurgerSectionSerializer(serializers.ModelSerializer):
         fields = ['id', 'title', 'location', 'position', 'items']
         
 
+class PromotionSerializer(serializers.ModelSerializer):
+    banner_url = serializers.SerializerMethodField()
+    company_name = serializers.SerializerMethodField()
+    product_name = serializers.SerializerMethodField()
+    category_name = serializers.SerializerMethodField()
+    discount_display = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Promotion
+        fields = [
+            'id',
+            'company',
+            'company_name',
+            'product',
+            'product_name',
+            'category',
+            'category_name',
+            'title',
+            'description',
+            'terms_conditions',
+            'discount_type',
+            'discount_value',
+            'discount_display',
+            'banner_url',
+            'start_date',
+            'end_date',
+            'is_active',
+            'created_at',
+            'updated_at'
+        ]
+        read_only_fields = ['created_at', 'updated_at']
+
+    def get_banner_url(self, obj):
+        if obj.banner:
+            return obj.banner.url
+        return None
+
+    def get_company_name(self, obj):
+        return obj.company.name if obj.company else None
+
+    def get_product_name(self, obj):
+        return obj.product.name if obj.product else None
+
+    def get_category_name(self, obj):
+        return obj.category.name if obj.category else None
+
+    def get_discount_display(self, obj):
+        if obj.discount_type == 'PERCENTAGE':
+            return f"{obj.discount_value}%"
+        return f"${obj.discount_value}"
+
+    def validate(self, data):
+        # Validar que si hay producto, pertenezca a la compañía
+        if 'product' in data and data.get('product') and data.get('company'):
+            if data['product'].company != data['company']:
+                raise serializers.ValidationError({
+                    'product': 'El producto debe pertenecer a la compañía seleccionada'
+                })
+
+        # Validar el valor del descuento según el tipo
+        if data.get('discount_type') == 'PERCENTAGE' and data.get('discount_value', 0) > 100:
+            raise serializers.ValidationError({
+                'discount_value': 'El porcentaje de descuento no puede ser mayor a 100%'
+            })
+
+        # Validar fechas
+        if data.get('end_date') and data.get('start_date'):
+            if data['end_date'] <= data['start_date']:
+                raise serializers.ValidationError({
+                    'end_date': 'La fecha de finalización debe ser posterior a la fecha de inicio'
+                })
+
+        return data

@@ -6,10 +6,17 @@ from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated, IsAuthenticatedOrReadOnly, AllowAny
 from rest_framework.decorators import action
 from django.contrib.auth import authenticate
+from .models import Promotion
+from .serializers import PromotionSerializer
 from django.shortcuts import get_object_or_404
 from .models import Company, Category, Product, Order, OrderItem, BusinessHours, CompanyCategory, Country, TopBurgerSection, TopBurgerItem
 from .serializers import OrderSerializer, OrderItemSerializer, CompanyCategorySerializer, CountrySerializer, \
     CompanySerializer, CategorySerializer, ProductSerializer, TopBurgerSectionSerializer, TopBurgerItemSerializer
+    
+from django.utils import timezone
+from django.db.models import Q
+
+
 
 import logging
 
@@ -19,6 +26,38 @@ class CompanyCategoryViewSet(viewsets.ModelViewSet):
     queryset = CompanyCategory.objects.all()
     serializer_class = CompanyCategorySerializer
     permission_classes = [AllowAny]
+
+class PromotionViewSet(viewsets.ModelViewSet):
+    queryset = Promotion.objects.all()
+    serializer_class = PromotionSerializer
+    permission_classes = [IsAuthenticatedOrReadOnly]
+
+    def get_queryset(self):
+        queryset = Promotion.objects.filter(is_active=True)
+        company_id = self.request.query_params.get('company', None)
+        category_id = self.request.query_params.get('category', None)
+        
+        if company_id:
+            queryset = queryset.filter(company_id=company_id)
+        if category_id:
+            queryset = queryset.filter(category_id=category_id)
+            
+        # Filtrar promociones vigentes
+        now = timezone.now()
+        queryset = queryset.filter(
+            Q(start_date__lte=now) &
+            (Q(end_date__gte=now) | Q(end_date__isnull=True))
+        )
+        
+        return queryset.select_related('company', 'product', 'category')
+
+    def perform_create(self, serializer):
+        serializer.save()
+
+    def get_serializer_context(self):
+        context = super().get_serializer_context()
+        context['request'] = self.request
+        return context
 
 class CountryViewSet(viewsets.ModelViewSet):
     queryset = Country.objects.all()
@@ -59,8 +98,13 @@ class CompanyViewSet(viewsets.ModelViewSet):
         queryset = Company.objects.prefetch_related(
             'business_hours',
             'category',
+            'country',
+            'promotions'  # Añadimos prefetch de promociones
+        ).select_related(
+            'category',
             'country'
         )
+        
         category = self.request.query_params.get('category', None)
         country = self.request.query_params.get('country', None)
         
@@ -114,7 +158,10 @@ class CompanyViewSet(viewsets.ModelViewSet):
             return Response(serializer.data, status=status.HTTP_201_CREATED, headers=headers)
         except Exception as e:
             logger.error(f"Error creating company: {str(e)}")
-            return Response({'error': 'An error occurred while creating the company'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            return Response(
+                {'error': 'An error occurred while creating the company'}, 
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
 
     def update(self, request, *args, **kwargs):
         try:
@@ -130,7 +177,10 @@ class CompanyViewSet(viewsets.ModelViewSet):
             return Response(serializer.data)
         except Exception as e:
             logger.error(f"Error updating company: {str(e)}")
-            return Response({'error': 'An error occurred while updating the company'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            return Response(
+                {'error': 'An error occurred while updating the company'}, 
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
 
     def retrieve(self, request, *args, **kwargs):
         try:
@@ -138,10 +188,51 @@ class CompanyViewSet(viewsets.ModelViewSet):
             serializer = self.get_serializer(instance)
             return Response(serializer.data)
         except Company.DoesNotExist:
-            return Response({'error': 'Company not found'}, status=status.HTTP_404_NOT_FOUND)
+            return Response(
+                {'error': 'Company not found'}, 
+                status=status.HTTP_404_NOT_FOUND
+            )
         except Exception as e:
             logger.error(f"Error retrieving company: {str(e)}", exc_info=True)
-            return Response({'error': 'An unexpected error occurred'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            return Response(
+                {'error': 'An unexpected error occurred'}, 
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+
+    @action(detail=True, methods=['get'])
+    def active_promotions(self, request, pk=None):
+        """
+        Endpoint especial para obtener solo las promociones activas de una empresa
+        """
+        try:
+            company = self.get_object()
+            now = timezone.now()
+            
+            promotions = company.promotions.filter(
+                is_active=True,
+                start_date__lte=now
+            ).filter(
+                Q(end_date__gte=now) | Q(end_date__isnull=True)
+            ).select_related('product', 'category')
+            
+            serializer = PromotionSerializer(
+                promotions, 
+                many=True, 
+                context={'request': request}
+            )
+            
+            return Response(serializer.data)
+        except Company.DoesNotExist:
+            return Response(
+                {'error': 'Company not found'}, 
+                status=status.HTTP_404_NOT_FOUND
+            )
+        except Exception as e:
+            logger.error(f"Error retrieving company promotions: {str(e)}")
+            return Response(
+                {'error': 'An error occurred while retrieving promotions'}, 
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
         
 class CategoryViewSet(viewsets.ModelViewSet):
     queryset = Category.objects.all()
@@ -393,3 +484,4 @@ class TopBurgerSectionSerializer(serializers.ModelSerializer):
         if not representation.get('items'):
             representation['items'] = []
         return representation
+    

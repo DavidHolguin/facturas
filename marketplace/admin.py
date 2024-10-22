@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import Company, Category, Product, BusinessHours, Order, OrderItem, TopBurgerSection, TopBurgerItem, CompanyCategory, Country
+from .models import Company, Category, Product, BusinessHours, Promotion, Order, OrderItem, TopBurgerSection, TopBurgerItem, CompanyCategory, Country
 from django.utils.html import format_html
 
 class BusinessHoursInline(admin.StackedInline):
@@ -97,3 +97,84 @@ class CountryAdmin(admin.ModelAdmin):
     search_fields = ('name', 'code')
     list_per_page = 20
 
+@admin.register(Promotion)
+class PromotionAdmin(admin.ModelAdmin):
+    list_display = (
+        'title',
+        'company',
+        'product',
+        'category',
+        'discount_display',
+        'date_range',
+        'is_active',
+        'banner_preview'
+    )
+    
+    list_filter = (
+        'is_active',
+        'discount_type',
+        'company',
+        'category',
+        ('start_date', admin.DateFieldListFilter),
+        ('end_date', admin.DateFieldListFilter),
+    )
+    
+    search_fields = (
+        'title',
+        'description',
+        'company__name',
+        'product__name',
+        'category__name'
+    )
+    
+    readonly_fields = (
+        'created_at',
+        'updated_at',
+        'banner_preview'
+    )
+    
+    fieldsets = (
+        ('Información Básica', {
+            'fields': (
+                'company',
+                'title',
+                'description',
+                'terms_conditions',
+            )
+        }),
+        ('Detalles de la Promoción', {
+            'fields': (
+                ('product', 'category'),
+                ('discount_type', 'discount_value'),
+                'banner',
+                'banner_preview',
+            )
+        }),
+        ('Fechas y Estado', {
+            'fields': (
+                ('start_date', 'end_date'),
+                'is_active',
+                ('created_at', 'updated_at'),
+            )
+        }),
+    )
+    
+    def discount_display(self, obj):
+        if obj.discount_type == 'PERCENTAGE':
+            return f"{obj.discount_value}%"
+        return f"${obj.discount_value}"
+    discount_display.short_description = "Descuento"
+    
+    def date_range(self, obj):
+        end_date = obj.end_date.strftime('%d/%m/%Y') if obj.end_date else "Sin fecha fin"
+        return f"{obj.start_date.strftime('%d/%m/%Y')} - {end_date}"
+    date_range.short_description = "Período"
+    
+    def banner_preview(self, obj):
+        if obj.banner:
+            return format_html(
+                '<img src="{}" style="max-height: 100px;"/>',
+                obj.banner.url
+            )
+        return "Sin banner"
+    banner_preview.short_description = "Vista previa del banner"

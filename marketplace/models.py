@@ -256,3 +256,102 @@ class BusinessHours(models.Model):
 
     def __str__(self):
         return f"Horario de {self.company.name}"
+    
+from django.db import models
+from django.core.validators import MinValueValidator, MaxValueValidator
+from cloudinary.models import CloudinaryField
+from django.core.exceptions import ValidationError
+
+class Promotion(models.Model):
+    DISCOUNT_TYPE_CHOICES = [
+        ('VALUE', 'Valor'),
+        ('PERCENTAGE', 'Porcentaje'),
+    ]
+
+    company = models.ForeignKey(
+        'Company',
+        on_delete=models.CASCADE,
+        related_name='promotions',
+        verbose_name="Empresa"
+    )
+    product = models.ForeignKey(
+        'Product',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='promotions',
+        verbose_name="Producto"
+    )
+    category = models.ForeignKey(
+        'Category',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='promotions',
+        verbose_name="Categoría"
+    )
+    title = models.CharField(
+        max_length=200,
+        verbose_name="Título"
+    )
+    description = models.TextField(
+        verbose_name="Descripción"
+    )
+    terms_conditions = models.TextField(
+        verbose_name="Términos y Condiciones"
+    )
+    discount_type = models.CharField(
+        max_length=10,
+        choices=DISCOUNT_TYPE_CHOICES,
+        verbose_name="Tipo de Descuento"
+    )
+    discount_value = models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        validators=[MinValueValidator(0)],
+        verbose_name="Valor del Descuento"
+    )
+    banner = CloudinaryField(
+        'image',
+        folder='promotions/',
+        help_text="Banner de la promoción"
+    )
+    start_date = models.DateTimeField(
+        verbose_name="Fecha de Inicio"
+    )
+    end_date = models.DateTimeField(
+        null=True,
+        blank=True,
+        verbose_name="Fecha de Finalización"
+    )
+    is_active = models.BooleanField(
+        default=True,
+        verbose_name="Activa"
+    )
+    created_at = models.DateTimeField(
+        auto_now_add=True,
+        verbose_name="Fecha de Creación"
+    )
+    updated_at = models.DateTimeField(
+        auto_now=True,
+        verbose_name="Última Actualización"
+    )
+
+    class Meta:
+        verbose_name = "Promoción"
+        verbose_name_plural = "Promociones"
+        ordering = ['-created_at']
+
+    def clean(self):
+        if self.discount_type == 'PERCENTAGE' and self.discount_value > 100:
+            raise ValidationError({
+                'discount_value': 'El porcentaje de descuento no puede ser mayor a 100%'
+            })
+        
+        if self.end_date and self.start_date and self.end_date <= self.start_date:
+            raise ValidationError({
+                'end_date': 'La fecha de finalización debe ser posterior a la fecha de inicio'
+            })
+
+    def __str__(self):
+        return f"{self.title} - {self.company.name}"
