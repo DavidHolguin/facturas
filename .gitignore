@@ -1,28 +1,74 @@
-# Ignorar el entorno virtual
-venv/
-
-# Ignorar el archivo .env que contiene variables de entorno sensibles
-.env
-
-# Ignorar bases de datos SQLite
-*.sqlite3
-
-# Ignorar archivos de migración
-**/migrations/*.pyc
-**/migrations/__pycache__/
-
-# Ignorar archivos de caché y compilados
+# Python
 *.pyc
+*.pyo
+*.pyd
 __pycache__/
+*.cover
+*.log
+*.pot
+*.mo
+*.py[co]
+*.so
+*.egg
+*.egg-info/
+dist/
+build/
+eggs/
+parts/
+sdist/
+develop-eggs/
+.installed.cfg
+*.egg-info/
+pip-log.txt
+pip-delete-this-directory.txt
 
-# Ignorar configuraciones y archivos locales de IDEs
-.vscode/
-*.idea
-*.sublime-workspace
-*.sublime-project
-
-# Archivos de medios subidos (opcional, si no quieres rastrear subidas en Git)
-/media/
-
-# Ignorar archivos de almacenamiento de Django
+# Django specific
+*.log
+local_settings.py
+db.sqlite3
+db.sqlite3-journal
+media/
 staticfiles/
+.env
+.vscode/
+
+# Environments
+.env
+.venv/
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+
+# IDEs
+.idea/
+*.sublime-project
+*.sublime-workspace
+.vscode/
+
+# MacOS
+.DS_Store
+
+# PyCharm
+*.iml
+.idea/
+
+# Heroku
+*.heroku/
+
+# Coverage reports
+htmlcov/
+.coverage
+.coverage.*
+.cache
+nosetests.xml
+coverage.xml
+*.cover
+.hypothesis/
+.pytest_cache/
+.tox/
+node_modules/
+
+# Cloudinary (if using)
+cloudinary_storage/
