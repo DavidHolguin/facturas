@@ -1,6 +1,7 @@
 # chatbots/permissions.py
 from rest_framework import permissions
 
+
 class ChatbotPermission(permissions.BasePermission):
     def has_permission(self, request, view):
         # Permitir lectura (GET) a todos los usuarios

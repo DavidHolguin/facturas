@@ -4,11 +4,8 @@ from rest_framework.routers import DefaultRouter
 from .views import ChatbotViewSet
 
 router = DefaultRouter()
-router.register(r'chatbots', ChatbotViewSet)
+router.register(r'', ChatbotViewSet, basename='chatbot')  # Cambiamos 'chatbots' a ''
 
 urlpatterns = [
     path('', include(router.urls)),
 ]
-
-# En backend/urls.py añadir:
-path('api/', include('chatbots.urls')),
