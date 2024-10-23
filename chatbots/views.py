@@ -1,17 +1,14 @@
+# chatbots/views.py
 from rest_framework import viewsets, status
-from rest_framework.decorators import action
 from rest_framework.response import Response
-from rest_framework.permissions import IsAuthenticatedOrReadOnly
-import openai
-from django.conf import settings
-
-from .models import Chatbot, Conversation, Message
-from .serializers import ChatbotSerializer, ConversationSerializer, MessageSerializer
+from .permissions import IsAuthenticatedOrReadOnlySafe
+from .models import Chatbot
+from .serializers import ChatbotSerializer
 
 class ChatbotViewSet(viewsets.ModelViewSet):
     queryset = Chatbot.objects.filter(is_active=True)
     serializer_class = ChatbotSerializer
-    permission_classes = [IsAuthenticatedOrReadOnly]
+    permission_classes = [IsAuthenticatedOrReadOnlySafe]
 
     def list(self, request, *args, **kwargs):
         try:
