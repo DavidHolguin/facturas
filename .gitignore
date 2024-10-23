@@ -72,3 +72,4 @@ node_modules/
 
 # Cloudinary (if using)
 cloudinary_storage/
+.vercel
