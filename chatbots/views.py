@@ -26,5 +26,10 @@ class ChatbotViewSet(viewsets.ModelViewSet):
             logger.error(f"Error in list view: {str(e)}", exc_info=True)
             return Response({
                 'status': 'error',
-                'message': str(e)
+                'message': 'Error interno del servidor',
+                'detail': str(e)
             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+    def get_queryset(self):
+        # Retornar todos los chatbots activos
+        return Chatbot.objects.filter(is_active=True)
