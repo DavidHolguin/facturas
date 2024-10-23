@@ -89,6 +89,7 @@ USE_I18N = True
 USE_TZ = True
 
 CORS_ALLOW_ALL_ORIGINS = False
+
 CORS_ALLOWED_ORIGINS = [
     'https://findout-nine.vercel.app',
     'https://findout.store',
