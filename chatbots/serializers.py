@@ -2,14 +2,23 @@
 from rest_framework import serializers
 from .models import Chatbot, Conversation, Message
 
+# chatbots/serializers.py
+from rest_framework import serializers
+from .models import Chatbot, Conversation, Message
+
 class ChatbotSerializer(serializers.ModelSerializer):
-    logo_url = serializers.URLField(source='logo.url', read_only=True)
+    avatar = serializers.SerializerMethodField()  # Cambiamos logo_url por avatar para coincidir con el frontend
     
     class Meta:
         model = Chatbot
         fields = ['id', 'name', 'description', 'company', 'model', 
-                 'system_prompt', 'logo_url', 'is_active', 'created_at']
+                 'system_prompt', 'avatar', 'is_active', 'created_at']
         read_only_fields = ['created_at']
+    
+    def get_avatar(self, obj):
+        if obj.logo and hasattr(obj.logo, 'url'):
+            return obj.logo.url
+        return None
 
 class MessageSerializer(serializers.ModelSerializer):
     class Meta:
