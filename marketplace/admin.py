@@ -1,161 +1,74 @@
 from django.contrib import admin
-from .models import Company, Category, Product, BusinessHours, Promotion, TopBurgerSection, CompanyCategory
 from django.utils.html import format_html
-
-class BusinessHoursInline(admin.StackedInline):
-    model = BusinessHours
-    extra = 1
-    
-    fieldsets = (
-        ('Lunes', {
-            'fields': ('monday_open', 'monday_close'),
-        }),
-        ('Martes', {
-            'fields': ('tuesday_open', 'tuesday_close'),
-        }),
-        ('Miércoles', {
-            'fields': ('wednesday_open', 'wednesday_close'),
-        }),
-        ('Jueves', {
-            'fields': ('thursday_open', 'thursday_close'),
-        }),
-        ('Viernes', {
-            'fields': ('friday_open', 'friday_close'),
-        }),
-        ('Sábado', {
-            'fields': ('saturday_open', 'saturday_close'),
-        }),
-        ('Domingo', {
-            'fields': ('sunday_open', 'sunday_close'),
-        }),
-    )
+from .models import Company, Category, Product
 
 @admin.register(Company)
 class CompanyAdmin(admin.ModelAdmin):
-    inlines = [BusinessHoursInline]
-    list_display = ['name', 'get_business_hours']
+    list_display = ['name', 'user', 'phone', 'preview_images']
+    list_filter = ['user']
+    search_fields = ['name', 'description', 'address']
+    readonly_fields = ['preview_images']
+    fieldsets = (
+        ('Información Básica', {
+            'fields': ('user', 'name', 'description')
+        }),
+        ('Imágenes', {
+            'fields': ('profile_picture', 'cover_photo', 'preview_images'),
+        }),
+        ('Contacto', {
+            'fields': ('phone', 'address'),
+        }),
+    )
 
-    def get_business_hours(self, obj):
-        try:
-            hours = obj.business_hours
-            schedule = []
-            days_map = {
-                'monday': 'Lunes',
-                'tuesday': 'Martes',
-                'wednesday': 'Miércoles',
-                'thursday': 'Jueves',
-                'friday': 'Viernes',
-                'saturday': 'Sábado',
-                'sunday': 'Domingo'
-            }
-            
-            for day in days_map:
-                open_time = getattr(hours, f'{day}_open')
-                close_time = getattr(hours, f'{day}_close')
-                if open_time and close_time:
-                    schedule.append(f"{days_map[day]}: {open_time.strftime('%H:%M')} - {close_time.strftime('%H:%M')}")
-            
-            return format_html("<br>".join(schedule)) if schedule else "Sin horarios definidos"
-        except BusinessHours.DoesNotExist:
-            return "Sin horarios definidos"
+    def preview_images(self, obj):
+        """Vista previa de las imágenes de perfil y portada."""
+        html = ""
+        if obj.profile_picture:
+            html += f'<img src="{obj.profile_picture.url}" style="max-height: 100px; margin-right: 10px;"/>'
+        if obj.cover_photo:
+            html += f'<img src="{obj.cover_photo.url}" style="max-height: 100px;"/>'
+        return format_html(html) if html else "Sin imágenes"
     
-    get_business_hours.short_description = "Horarios de Atención"
+    preview_images.short_description = "Vista previa de imágenes"
 
 @admin.register(Category)
 class CategoryAdmin(admin.ModelAdmin):
-    list_display = ('name',)
-    search_fields = ('name',)
+    list_display = ['name', 'category_type']
+    list_filter = ['category_type']
+    search_fields = ['name']
+    fieldsets = (
+        (None, {
+            'fields': ('name', 'category_type')
+        }),
+    )
 
 @admin.register(Product)
 class ProductAdmin(admin.ModelAdmin):
-    list_display = ('name', 'company', 'category', 'price')
-    list_filter = ('company', 'category')
-    search_fields = ('name', 'company__name')
-
-
-@admin.register(CompanyCategory)
-class CompanyCategoryAdmin(admin.ModelAdmin):
-    list_display = ('name',)
-    search_fields = ('name', 'description')
-
-@admin.register(Promotion)
-class PromotionAdmin(admin.ModelAdmin):
-    list_display = (
-        'title',
-        'company',
-        'product',
-        'category',
-        'discount_display',
-        'date_range',
-        'is_active',
-        'banner_preview'
-    )
-    
-    list_filter = (
-        'is_active',
-        'discount_type',
-        'company',
-        'category',
-        ('start_date', admin.DateFieldListFilter),
-        ('end_date', admin.DateFieldListFilter),
-    )
-    
-    search_fields = (
-        'title',
-        'description',
-        'company__name',
-        'product__name',
-        'category__name'
-    )
-    
-    readonly_fields = (
-        'created_at',
-        'updated_at',
-        'banner_preview'
-    )
+    list_display = ['name', 'company', 'category', 'price', 'preview_image']
+    list_filter = ['company', 'category']
+    search_fields = ['name', 'description', 'company__name']
+    readonly_fields = ['preview_image']
     
     fieldsets = (
         ('Información Básica', {
-            'fields': (
-                'company',
-                'title',
-                'description',
-                'terms_conditions',
-            )
+            'fields': ('company', 'category', 'name', 'description')
         }),
-        ('Detalles de la Promoción', {
-            'fields': (
-                ('product', 'category'),
-                ('discount_type', 'discount_value'),
-                'banner',
-                'banner_preview',
-            )
+        ('Precio', {
+            'fields': ('price',),
         }),
-        ('Fechas y Estado', {
-            'fields': (
-                ('start_date', 'end_date'),
-                'is_active',
-                ('created_at', 'updated_at'),
-            )
+        ('Imagen', {
+            'fields': ('image', 'preview_image'),
         }),
     )
-    
-    def discount_display(self, obj):
-        if obj.discount_type == 'PERCENTAGE':
-            return f"{obj.discount_value}%"
-        return f"${obj.discount_value}"
-    discount_display.short_description = "Descuento"
-    
-    def date_range(self, obj):
-        end_date = obj.end_date.strftime('%d/%m/%Y') if obj.end_date else "Sin fecha fin"
-        return f"{obj.start_date.strftime('%d/%m/%Y')} - {end_date}"
-    date_range.short_description = "Período"
-    
-    def banner_preview(self, obj):
-        if obj.banner:
+
+    def preview_image(self, obj):
+        """Vista previa de la imagen del producto."""
+        if obj.image:
             return format_html(
                 '<img src="{}" style="max-height: 100px;"/>',
-                obj.banner.url
+                obj.image.url
             )
-        return "Sin banner"
-    banner_preview.short_description = "Vista previa del banner"
+        return "Sin imagen"
+    
+    preview_image.short_description = "Vista previa"
+
