@@ -135,8 +135,8 @@ REST_FRAMEWORK = {
 }
 
 SPECTACULAR_SETTINGS = {
-    'TITLE': 'Findout Marketplace API',
-    'DESCRIPTION': 'Documentación de la API para el Marketplace de Findout',
+    'TITLE': 'Facturas PWA',
+    'DESCRIPTION': 'Documentación de la API para el Facturas Arres',
     'VERSION': '1.0.0',
     'SERVE_INCLUDE_SCHEMA': False,
 }
