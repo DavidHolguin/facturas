@@ -1,4 +1,3 @@
-# serializers.py
 from rest_framework import serializers
 from .models import Company, Category, Product
 
@@ -18,6 +17,7 @@ class CompanySerializer(serializers.ModelSerializer):
             'user',
             'name', 
             'description',
+            'nit',
             'profile_picture_url',
             'cover_photo_url',
             'phone',
@@ -63,4 +63,3 @@ class ProductSerializer(serializers.ModelSerializer):
 
     def get_category_name(self, obj):
         return obj.category.name if obj.category else None
-

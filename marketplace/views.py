@@ -1,4 +1,3 @@
-# views.py
 from rest_framework import viewsets, filters
 from rest_framework.permissions import IsAuthenticatedOrReadOnly
 from django.db.models import Q
@@ -17,17 +16,17 @@ class CompanyViewSet(viewsets.ModelViewSet):
     serializer_class = CompanySerializer
     permission_classes = [IsAuthenticatedOrReadOnly]
     filter_backends = [filters.SearchFilter]
-    search_fields = ['name', 'description']
+    search_fields = ['name', 'description', 'nit']
 
     def get_queryset(self):
         queryset = Company.objects.all()
         category = self.request.query_params.get('category', None)
-        
+       
         if category:
             queryset = queryset.filter(
-                Q(products__category__id=category)
+                product__category__id=category
             ).distinct()
-            
+           
         return queryset
 
 class ProductViewSet(viewsets.ModelViewSet):
@@ -41,10 +40,10 @@ class ProductViewSet(viewsets.ModelViewSet):
         queryset = Product.objects.all()
         company = self.request.query_params.get('company', None)
         category = self.request.query_params.get('category', None)
-        
+       
         if company:
             queryset = queryset.filter(company__id=company)
         if category:
             queryset = queryset.filter(category__id=category)
-            
+           
         return queryset

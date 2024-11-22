@@ -6,6 +6,7 @@ class Company(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE)
     name = models.CharField(max_length=100)
     description = models.TextField()
+    nit = models.CharField(max_length=20, null=True, blank=True, help_text="Número de Identificación Tributaria")
     profile_picture = CloudinaryField(
         'image',
         folder='company_profiles/',

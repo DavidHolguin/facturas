@@ -23,6 +23,7 @@ INSTALLED_APPS = [
     'rest_framework.authtoken',
     'corsheaders',
     'drf_spectacular', 
+    'invoicing',
     'cloudinary',
     'cloudinary_storage',
     'marketplace',
