@@ -29,7 +29,7 @@ doc_patterns = [
 urlpatterns = [
     # Admin interface
     path('admin/', admin.site.urls),
-    
+    path('api/invoicing/', include('invoicing.urls')),
     # API endpoints
     path('api/', include(api_patterns)),
     
