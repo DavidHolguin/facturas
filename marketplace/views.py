@@ -1,5 +1,8 @@
+# views.py
 from rest_framework import viewsets, filters
 from rest_framework.permissions import IsAuthenticatedOrReadOnly
+from rest_framework.decorators import action
+from rest_framework.response import Response
 from django.db.models import Q
 from .models import Company, Category, Product
 from .serializers import CompanySerializer, CategorySerializer, ProductSerializer
@@ -47,3 +50,22 @@ class ProductViewSet(viewsets.ModelViewSet):
             queryset = queryset.filter(category__id=category)
            
         return queryset
+
+    @action(detail=True, methods=['get'])
+    def calculate_price(self, request, pk=None):
+        product = self.get_object()
+        weight = request.query_params.get('weight', None)
+        
+        if not weight:
+            return Response({'error': 'Se requiere especificar el peso'}, status=400)
+        
+        try:
+            weight = float(weight)
+            price = product.get_price_for_weight(weight)
+            return Response({
+                'weight': weight,
+                'unit': product.weight_unit,
+                'calculated_price': price
+            })
+        except ValueError:
+            return Response({'error': 'Peso inválido'}, status=400)

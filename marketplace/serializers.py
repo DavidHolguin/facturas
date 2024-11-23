@@ -1,3 +1,4 @@
+# serializers.py
 from rest_framework import serializers
 from .models import Company, Category, Product
 
@@ -38,6 +39,7 @@ class ProductSerializer(serializers.ModelSerializer):
     image_url = serializers.SerializerMethodField()
     company_name = serializers.SerializerMethodField()
     category_name = serializers.SerializerMethodField()
+    formatted_price = serializers.SerializerMethodField()
 
     class Meta:
         model = Product
@@ -50,7 +52,11 @@ class ProductSerializer(serializers.ModelSerializer):
             'name',
             'description',
             'price',
-            'image_url'
+            'is_weight_based',
+            'base_weight',
+            'weight_unit',
+            'image_url',
+            'formatted_price'
         ]
 
     def get_image_url(self, obj):
@@ -63,3 +69,8 @@ class ProductSerializer(serializers.ModelSerializer):
 
     def get_category_name(self, obj):
         return obj.category.name if obj.category else None
+
+    def get_formatted_price(self, obj):
+        if obj.is_weight_based and obj.base_weight:
+            return f"${obj.price} por {obj.base_weight}{obj.weight_unit}"
+        return f"${obj.price}"
