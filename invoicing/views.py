@@ -1,11 +1,12 @@
+# views.py
 from rest_framework import viewsets, permissions, status
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from django.shortcuts import get_object_or_404
-from django.db.models import Sum, F
+from django.db.models import Sum, Count, F, Q
 from django.utils import timezone
 from django.http import HttpResponse
-
+from datetime import datetime, timedelta
 from .models import Invoice
 from .serializers import InvoiceSerializer
 from reportlab.pdfgen import canvas
@@ -14,7 +15,6 @@ from reportlab.lib.units import inch
 from reportlab.lib.styles import getSampleStyleSheet
 from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph
 from reportlab.lib import colors
-
 import io
 import logging
 
@@ -26,23 +26,35 @@ class InvoiceViewSet(viewsets.ModelViewSet):
     permission_classes = [permissions.IsAuthenticated]
 
     def get_queryset(self):
-        """Filtrar facturas por empresa del usuario"""
-        return Invoice.objects.filter(company__user=self.request.user)
+        queryset = Invoice.objects.filter(company__user=self.request.user)
+        
+        # Filtros adicionales
+        status = self.request.query_params.get('status', None)
+        date_from = self.request.query_params.get('date_from', None)
+        date_to = self.request.query_params.get('date_to', None)
+        company_id = self.request.query_params.get('company_id', None)
+
+        if status:
+            queryset = queryset.filter(status=status)
+        if date_from:
+            queryset = queryset.filter(issue_date__gte=date_from)
+        if date_to:
+            queryset = queryset.filter(issue_date__lte=date_to)
+        if company_id:
+            queryset = queryset.filter(company_id=company_id)
+
+        return queryset
 
     def create(self, request, *args, **kwargs):
-        """Sobrescribir método de creación para manejar generación de número de factura"""
         try:
             # Generar número de factura único
-            last_invoice = Invoice.objects.filter(
-                company=request.data.get('company_id')
-            ).order_by('-id').first()
+            company_id = request.data.get('company_id')
+            last_invoice = Invoice.objects.filter(company_id=company_id).order_by('-id').first()
 
             if last_invoice:
-                # Incrementar el último número de factura
                 last_number = int(last_invoice.invoice_number.split('-')[-1])
                 new_number = f"{timezone.now().year}-{last_number + 1:04d}"
             else:
-                # Primera factura para esta empresa
                 new_number = f"{timezone.now().year}-0001"
 
             request.data['invoice_number'] = new_number
@@ -61,147 +73,238 @@ class InvoiceViewSet(viewsets.ModelViewSet):
             )
 
     @action(detail=False, methods=['GET'])
-    def summary(self, request):
-        """Resumen de facturas"""
+    def dashboard(self, request):
+        """Dashboard completo para la empresa"""
         try:
-            queryset = self.get_queryset()
-            summary = {
-                'total_invoices': queryset.count(),
-                'total_amount': queryset.aggregate(total=Sum('total'))['total'] or 0,
-                'invoices_by_status': queryset.values('status').annotate(count=Sum('id'))
+            company_id = request.query_params.get('company_id')
+            if not company_id:
+                return Response(
+                    {"error": "Se requiere company_id"},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+
+            # Estadísticas generales
+            stats = Invoice.get_company_statistics(company_id)
+            
+            # Facturas por vencer
+            today = timezone.now()
+            upcoming_due = Invoice.objects.filter(
+                company_id=company_id,
+                status='EMITIDA',
+                due_date__gte=today,
+                due_date__lte=today + timedelta(days=7)
+            ).count()
+
+            # Facturas vencidas
+            overdue = Invoice.objects.filter(
+                company_id=company_id,
+                status='EMITIDA',
+                due_date__lt=today
+            ).count()
+
+            # Top clientes
+            top_customers = Invoice.objects.filter(company_id=company_id)\
+                .values('customer_name')\
+                .annotate(
+                    total_invoices=Count('id'),
+                    total_amount=Sum('total')
+                )\
+                .order_by('-total_amount')[:5]
+
+            response_data = {
+                **stats,
+                'upcoming_due': upcoming_due,
+                'overdue': overdue,
+                'top_customers': top_customers,
+                'recent_activity': self.get_recent_activity(company_id)
             }
-            return Response(summary)
+
+            return Response(response_data)
         except Exception as e:
-            logger.error(f"Error generating invoice summary: {str(e)}")
+            logger.error(f"Error getting dashboard data: {str(e)}")
             return Response(
-                {"error": "No se pudo generar el resumen"},
+                {"error": "Error al obtener datos del dashboard"},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+
+    def get_recent_activity(self, company_id):
+        """Obtiene la actividad reciente de facturación"""
+        recent = Invoice.objects.filter(company_id=company_id)\
+            .order_by('-updated_at')[:10]\
+            .values('id', 'invoice_number', 'customer_name', 'total', 
+                   'status', 'updated_at')
+        return recent
+
+    @action(detail=True, methods=['POST'])
+    def change_status(self, request, pk=None):
+        """Cambia el estado de una factura"""
+        try:
+            invoice = self.get_object()
+            new_status = request.data.get('status')
+            
+            if new_status not in dict(Invoice.INVOICE_STATUS):
+                return Response(
+                    {"error": "Estado no válido"},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+
+            # Validaciones específicas por estado
+            if new_status == 'PAGADA' and invoice.status != 'EMITIDA':
+                return Response(
+                    {"error": "Solo se pueden marcar como pagadas las facturas emitidas"},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+
+            if new_status == 'ANULADA' and invoice.status == 'PAGADA':
+                return Response(
+                    {"error": "No se pueden anular facturas pagadas"},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+
+            invoice.status = new_status
+            invoice.save()
+            
+            return Response(self.get_serializer(invoice).data)
+        except Exception as e:
+            logger.error(f"Error changing invoice status: {str(e)}")
+            return Response(
+                {"error": "Error al cambiar el estado de la factura"},
+                status=status.HTTP_400_BAD_REQUEST
             )
 
     @action(detail=True, methods=['GET'])
     def generate_pdf(self, request, pk=None):
-        """Genera PDF de la factura con mejor formato"""
+        """Genera un PDF de la factura"""
         try:
-            invoice = get_object_or_404(Invoice, pk=pk)
-            
-            # Crear PDF en memoria
+            invoice = self.get_object()
             buffer = io.BytesIO()
-            doc = SimpleDocTemplate(buffer, pagesize=letter)
-            styles = getSampleStyleSheet()
+            
+            # Crear el documento PDF
+            doc = SimpleDocTemplate(
+                buffer,
+                pagesize=letter,
+                rightMargin=inch/2,
+                leftMargin=inch/2,
+                topMargin=inch/2,
+                bottomMargin=inch/2
+            )
+            
+            # Contenido del PDF
             elements = []
-
+            styles = getSampleStyleSheet()
+            
             # Encabezado
-            elements.append(Paragraph(f"Factura No. {invoice.invoice_number}", styles['Title']))
+            elements.append(Paragraph(f"Factura #{invoice.invoice_number}", styles['Title']))
             elements.append(Paragraph(f"Fecha: {invoice.issue_date.strftime('%d/%m/%Y')}", styles['Normal']))
+            elements.append(Paragraph(f"Cliente: {invoice.customer_name}", styles['Normal']))
+            elements.append(Paragraph(f"Email: {invoice.customer_email}", styles['Normal']))
             
-            # Información de la empresa
-            company_data = [
-                ["Empresa:", invoice.company.name],
-                ["NIT:", invoice.company.nit],
-                ["Dirección:", invoice.company.address]
-            ]
-            company_table = Table(company_data, colWidths=[100, 300])
-            company_table.setStyle(TableStyle([
-                ('BACKGROUND', (0,0), (0,-1), colors.grey),
-                ('TEXTCOLOR', (0,0), (0,-1), colors.whitesmoke),
-                ('ALIGN', (0,0), (-1,-1), 'LEFT'),
-                ('FONTNAME', (0,0), (-1,0), 'Helvetica-Bold'),
-                ('FONTSIZE', (0,0), (-1,0), 12),
-                ('BOTTOMPADDING', (0,0), (-1,-1), 12),
-                ('BACKGROUND', (1,0), (-1,-1), colors.beige),
-            ]))
-            elements.append(company_table)
-
-            # Información del cliente
-            customer_data = [
-                ["Cliente:", invoice.customer_name],
-                ["Identificación:", f"{invoice.customer_identification_type} {invoice.customer_identification_number}"],
-                ["Correo:", invoice.customer_email]
-            ]
-            customer_table = Table(customer_data, colWidths=[100, 300])
-            customer_table.setStyle(TableStyle([
-                ('BACKGROUND', (0,0), (0,-1), colors.grey),
-                ('TEXTCOLOR', (0,0), (0,-1), colors.whitesmoke),
-                ('ALIGN', (0,0), (-1,-1), 'LEFT'),
-                ('FONTNAME', (0,0), (-1,0), 'Helvetica-Bold'),
-                ('FONTSIZE', (0,0), (-1,0), 12),
-                ('BOTTOMPADDING', (0,0), (-1,-1), 12),
-                ('BACKGROUND', (1,0), (-1,-1), colors.beige),
-            ]))
-            elements.append(customer_table)
-
-            # Detalle de productos
-            productos_data = [["Producto", "Cantidad", "Precio Unitario", "Total"]]
+            # Tabla de items
+            items_data = [['Producto', 'Cantidad', 'Precio Unitario', 'Total']]
             for item in invoice.invoice_items.all():
-                productos_data.append([
-                    item.product.name, 
-                    str(item.quantity), 
-                    f"${item.unit_price:.2f}", 
-                    f"${item.total:.2f}"
+                items_data.append([
+                    item.product.name,
+                    str(item.quantity),
+                    f"${item.unit_price:,.2f}",
+                    f"${item.total:,.2f}"
                 ])
             
-            productos_table = Table(productos_data, colWidths=[200, 100, 100, 100])
-            productos_table.setStyle(TableStyle([
-                ('BACKGROUND', (0,0), (-1,0), colors.grey),
-                ('TEXTCOLOR', (0,0), (-1,0), colors.whitesmoke),
-                ('ALIGN', (0,0), (-1,-1), 'CENTER'),
-                ('FONTNAME', (0,0), (-1,0), 'Helvetica-Bold'),
-                ('FONTSIZE', (0,0), (-1,0), 12),
-                ('BOTTOMPADDING', (0,0), (-1,-1), 12),
-                ('GRID', (0,0), (-1,-1), 1, colors.black)
+            # Estilo de la tabla
+            table = Table(items_data)
+            table.setStyle(TableStyle([
+                ('BACKGROUND', (0, 0), (-1, 0), colors.grey),
+                ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
+                ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+                ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+                ('FONTSIZE', (0, 0), (-1, 0), 14),
+                ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
+                ('BACKGROUND', (0, 1), (-1, -1), colors.beige),
+                ('TEXTCOLOR', (0, 1), (-1, -1), colors.black),
+                ('FONTNAME', (0, 1), (-1, -1), 'Helvetica'),
+                ('FONTSIZE', (0, 1), (-1, -1), 12),
+                ('GRID', (0, 0), (-1, -1), 1, colors.black)
             ]))
-            elements.append(productos_table)
-
+            elements.append(table)
+            
             # Totales
-            totales_data = [
-                ["Subtotal", f"${invoice.subtotal:.2f}"],
-            ]
-            
+            elements.append(Paragraph(f"Subtotal: ${invoice.subtotal:,.2f}", styles['Normal']))
             for tax in invoice.taxes.all():
-                totales_data.append([
-                    f"{tax.tax_type} ({tax.percentage}%)", 
-                    f"${tax.amount:.2f}"
-                ])
+                elements.append(Paragraph(
+                    f"{tax.get_tax_type_display()}: ${tax.amount:,.2f}",
+                    styles['Normal']
+                ))
+            elements.append(Paragraph(f"Total: ${invoice.total:,.2f}", styles['Normal']))
             
-            totales_data.append(["Total", f"${invoice.total:.2f}"])
-            
-            totales_table = Table(totales_data, colWidths=[300, 100])
-            totales_table.setStyle(TableStyle([
-                ('ALIGN', (0,0), (-1,-1), 'RIGHT'),
-                ('FONTNAME', (0,-1), (-1,-1), 'Helvetica-Bold'),
-                ('FONTSIZE', (0,-1), (-1,-1), 12),
-            ]))
-            elements.append(totales_table)
-
-            # Construir PDF
+            # Generar PDF
             doc.build(elements)
             
+            # Preparar la respuesta
             buffer.seek(0)
             response = HttpResponse(buffer, content_type='application/pdf')
-            response['Content-Disposition'] = f'filename="factura_{invoice.invoice_number}.pdf"'
+            response['Content-Disposition'] = f'attachment; filename="invoice_{invoice.invoice_number}.pdf"'
+            
             return response
-
         except Exception as e:
-            logger.error(f"Error generating invoice PDF: {str(e)}")
+            logger.error(f"Error generating PDF: {str(e)}")
             return Response(
-                {"error": "No se pudo generar el PDF"},
+                {"error": "Error al generar el PDF"},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
 
-    @action(detail=True, methods=['POST'])
-    def change_status(self, request, pk=None):
-        """Cambiar el estado de la factura"""
-        invoice = get_object_or_404(Invoice, pk=pk)
-        new_status = request.data.get('status')
-        
-        if new_status not in dict(Invoice.INVOICE_STATUS):
-            return Response(
-                {"error": "Estado de factura inválido"},
-                status=status.HTTP_400_BAD_REQUEST
+    @action(detail=False, methods=['GET'])
+    def summary(self, request):
+        """Obtiene un resumen de facturación por período"""
+        try:
+            company_id = request.query_params.get('company_id')
+            period = request.query_params.get('period', 'month')  # month, quarter, year
+            
+            if not company_id:
+                return Response(
+                    {"error": "Se requiere company_id"},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+            
+            today = timezone.now()
+            
+            if period == 'month':
+                start_date = today - timedelta(days=30)
+                date_trunc = 'day'
+            elif period == 'quarter':
+                start_date = today - timedelta(days=90)
+                date_trunc = 'week'
+            else:  # year
+                start_date = today - timedelta(days=365)
+                date_trunc = 'month'
+            
+            summary = Invoice.objects.filter(
+                company_id=company_id,
+                created_at__gte=start_date
+            ).values(
+                'status'
+            ).annotate(
+                count=Count('id'),
+                total_amount=Sum('total')
             )
-        
-        invoice.status = new_status
-        invoice.save()
-        
-        serializer = self.get_serializer(invoice)
-        return Response(serializer.data)
+            
+            trends = Invoice.objects.filter(
+                company_id=company_id,
+                created_at__gte=start_date
+            ).extra(
+                select={'period': f"date_trunc('{date_trunc}', created_at)"}
+            ).values(
+                'period'
+            ).annotate(
+                count=Count('id'),
+                total_amount=Sum('total')
+            ).order_by('period')
+            
+            return Response({
+                'summary': summary,
+                'trends': trends
+            })
+        except Exception as e:
+            logger.error(f"Error getting summary: {str(e)}")
+            return Response(
+                {"error": "Error al obtener el resumen"},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
