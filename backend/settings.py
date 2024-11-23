@@ -25,6 +25,7 @@ INSTALLED_APPS = [
     'drf_spectacular', 
     'invoicing',
     'cloudinary',
+    'authentication',
     'cloudinary_storage',
     'marketplace',
     'chatbots',
@@ -92,12 +93,7 @@ USE_TZ = True
 CORS_ALLOW_ALL_ORIGINS = False
 
 CORS_ALLOWED_ORIGINS = [
-    'https://findout-nine.vercel.app',
-    'https://findout.store',
-    'https://www.findout.store',
-    'https://influbot.vercel.app',
-    'https://influbot.co',
-    'https://www.influbot.co',
+    
     'http://localhost:3000',
 ]
 CORS_ALLOW_CREDENTIALS = True

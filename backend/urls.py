@@ -1,4 +1,3 @@
-# config/urls.py
 from django.contrib import admin
 from django.urls import path, include
 from django.conf import settings
@@ -13,6 +12,7 @@ from drf_spectacular.views import (
 api_patterns = [
     path('marketplace/', include('marketplace.urls')),
     path('chatbots/', include('chatbots.urls')),
+    path('auth/', include('authentication.urls')),  # Cambiado para mejor organización
 ]
 
 # Documentation URLs
