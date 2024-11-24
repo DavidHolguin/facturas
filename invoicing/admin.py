@@ -57,7 +57,13 @@ class InvoiceAdmin(admin.ModelAdmin):
     )
 
     def formatted_total(self, obj):
-        return format_html('<b>${:,.2f}</b>', obj.total)
+        try:
+            # Asegurarse de que `obj.total` es numérico antes de formatear
+            total = float(obj.total)
+            return format_html('<b>${:,.2f}</b>', total)
+        except (TypeError, ValueError):
+            # Retorna un mensaje o un valor vacío si `total` no es válido
+            return format_html('<b>-</b>')
     formatted_total.short_description = 'Total'
     formatted_total.admin_order_field = 'total'
 
