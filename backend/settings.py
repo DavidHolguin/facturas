@@ -187,12 +187,6 @@ DEFAULT_FILE_STORAGE = 'cloudinary_storage.storage.MediaCloudinaryStorage'
 MEDIA_URL = '/media/'
 MEDIA_ROOT = BASE_DIR / 'media'
 
-# Production Settings
-if os.environ.get('DJANGO_ENV') == 'production':
-    DEBUG = False
-    SECURE_SSL_REDIRECT = True
-    SESSION_COOKIE_SECURE = True
-    CSRF_COOKIE_SECURE = True
 
 # Configure Django-Heroku
 django_heroku.settings(locals(), staticfiles=False)
