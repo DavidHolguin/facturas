@@ -1,8 +1,8 @@
 from rest_framework import serializers
 from django.contrib.auth import get_user_model
 from .models import Invoice, InvoiceItem
-from marketplace.models import Product, Company  # Importación de los modelos de marketplace
-from marketplace.serializers import ProductSerializer  # Asumiendo que existe este serializer en marketplace
+from marketplace.models import Product, Company
+from marketplace.serializers import ProductSerializer
 
 CustomerUser = get_user_model()
 
@@ -30,9 +30,9 @@ class CustomerLookupSerializer(serializers.Serializer):
     search_term = serializers.CharField()
 
 class InvoiceItemSerializer(serializers.ModelSerializer):
-    product = ProductSerializer(read_only=True)  # Usando el serializer de marketplace
+    product = ProductSerializer(read_only=True)
     product_id = serializers.PrimaryKeyRelatedField(
-        queryset=Product.objects.all(),  # Usando el modelo Product de marketplace
+        queryset=Product.objects.all(),
         source='product',
         write_only=True
     )
@@ -52,7 +52,7 @@ class InvoiceItemSerializer(serializers.ModelSerializer):
 class InvoiceSerializer(serializers.ModelSerializer):
     invoice_items = InvoiceItemSerializer(many=True)
     company_id = serializers.PrimaryKeyRelatedField(
-        queryset=Company.objects.all(),  # Usando el modelo Company de marketplace
+        queryset=Company.objects.all(),
         source='company',
         write_only=True
     )

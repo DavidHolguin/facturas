@@ -111,22 +111,55 @@ class InvoiceViewSet(viewsets.ModelViewSet):
 
     def create(self, request, *args, **kwargs):
         try:
-            # Generar número de factura único
-            company_id = request.data.get('company_id')
-            last_invoice = Invoice.objects.filter(company_id=company_id).order_by('-id').first()
+            # Iniciar una transacción de base de datos para asegurar atomicidad
+            with transaction.atomic():
+                # Generar número de factura único
+                company_id = request.data.get('company_id')
+                
+                # Validar que company_id esté presente
+                if not company_id:
+                    return Response({
+                        'error': 'Company ID is required',
+                        'detail': 'No se proporcionó un ID de empresa válido'
+                    }, status=status.HTTP_400_BAD_REQUEST)
 
-            if last_invoice:
-                last_number = int(last_invoice.invoice_number.split('-')[-1])
-                new_number = f"{timezone.now().year}-{last_number + 1:04d}"
-            else:
-                new_number = f"{timezone.now().year}-0001"
-
-            request.data['invoice_number'] = new_number
-            request.data['internal_id'] = Invoice.generate_internal_id(company_id)
-
-            serializer = self.get_serializer(data=request.data)
-            serializer.is_valid(raise_exception=True)
-            self.perform_create(serializer)
+                # Buscar la última factura para esta empresa
+                last_invoice = Invoice.objects.filter(company_id=company_id).order_by('-id').first()
+                
+                # Generar el nuevo número de factura
+                if last_invoice:
+                    last_number = int(last_invoice.invoice_number.split('-')[-1])
+                    new_number = f"{timezone.now().year}-{last_number + 1:04d}"
+                else:
+                    new_number = f"{timezone.now().year}-0001"
+                
+                # Añadir una verificación adicional para evitar números de factura vacíos
+                if not new_number:
+                    raise ValueError("No se pudo generar un número de factura válido")
+                
+                # Verificar y asegurar que el número de factura sea único
+                counter = 1
+                original_new_number = new_number
+                while Invoice.objects.filter(
+                    invoice_number=new_number, 
+                    company_id=company_id
+                ).exists():
+                    new_number = f"{timezone.now().year}-{int(original_new_number.split('-')[-1]) + counter:04d}"
+                    counter += 1
+                
+                # Preparar los datos para la creación de la factura
+                request.data['invoice_number'] = new_number
+                request.data['internal_id'] = Invoice.generate_internal_id(company_id)
+                
+                # Crear el serializer y validar los datos
+                serializer = self.get_serializer(data=request.data)
+                serializer.is_valid(raise_exception=True)
+                
+                # Realizar la creación de la factura
+                self.perform_create(serializer)
+                
+                # Devolver la respuesta exitosa
+                return Response(serializer.data, status=status.HTTP_201_CREATED)
             
             # Crear los items de la factura
             items_data = request.data.get('items', [])

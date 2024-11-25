@@ -1,4 +1,3 @@
-# models.py
 from django.contrib.auth.models import AbstractUser, BaseUserManager
 from django.db import models
 from django.utils.translation import gettext_lazy as _
@@ -89,7 +88,7 @@ class CustomerUser(AbstractUser):
         super().save(*args, **kwargs)
 
     def get_total_invoices(self):
-        return self.invoice_set.count()  # Asumiendo que tienes una relación con Invoice
+        return self.invoice_set.count()
 
     def get_total_amount(self):
         return self.invoice_set.aggregate(total=Sum('total_amount'))['total'] or 0
@@ -198,7 +197,6 @@ class Invoice(models.Model):
 
     def __str__(self):
         return f"Factura {self.invoice_number} - {self.customer.get_full_name()}"
-
 
 class InvoiceItem(models.Model):
     invoice = models.ForeignKey(
