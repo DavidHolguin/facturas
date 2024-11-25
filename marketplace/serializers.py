@@ -71,13 +71,49 @@ class CompanySerializer(serializers.ModelSerializer):
             return obj.cover_photo.url
         return None
 
+class ProductWriteSerializer(serializers.ModelSerializer):
+    category_name = serializers.CharField(write_only=True, required=False, allow_null=True)
+
+    class Meta:
+        model = Product
+        fields = [
+            'company',
+            'categories',
+            'category_name',
+            'name',
+            'description',
+            'price',
+            'main_image',
+            'additional_images'
+        ]
+        extra_kwargs = {
+            'description': {'required': False},
+            'categories': {'required': False}
+        }
+
+    def validate_price(self, value):
+        if value <= 0:
+            raise serializers.ValidationError("El precio debe ser mayor que 0.")
+        return value
+
+    def create(self, validated_data):
+        # Handle category creation if category_name is provided
+        category_name = validated_data.pop('category_name', None)
+        if category_name:
+            category, _ = Category.objects.get_or_create(
+                name=category_name, 
+                category_type='PRODUCTOS'
+            )
+            validated_data['categories'] = [category]
+
+        # Create product
+        return super().create(validated_data)
+
 class ProductSerializer(serializers.ModelSerializer):
     main_image_url = serializers.SerializerMethodField()
     additional_images_url = serializers.SerializerMethodField()
     company_name = serializers.SerializerMethodField()
-    categories = CategorySerializer(many=True, read_only=True)
-    promotion = PromotionSerializer(read_only=True)
-    discounted_price = serializers.SerializerMethodField()
+    categories = serializers.SerializerMethodField()
     
     class Meta:
         model = Product
@@ -89,49 +125,18 @@ class ProductSerializer(serializers.ModelSerializer):
             'name',
             'description',
             'price',
-            'promotion',
-            'discounted_price',
             'main_image_url',
             'additional_images_url'
         ]
 
     def get_main_image_url(self, obj):
-        if obj.main_image:
-            return obj.main_image.url
-        return None
+        return obj.main_image.url if obj.main_image else None
 
     def get_additional_images_url(self, obj):
-        if obj.additional_images:
-            return obj.additional_images.url
-        return None
+        return obj.additional_images.url if obj.additional_images else None
 
     def get_company_name(self, obj):
         return obj.company.name if obj.company else None
 
-    def get_discounted_price(self, obj):
-        return obj.get_discounted_price()
-
-# Serializer para creación/actualización de productos
-class ProductWriteSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = Product
-        fields = [
-            'company',
-            'categories',
-            'name',
-            'description',
-            'price',
-            'promotion',
-            'main_image',
-            'additional_images'
-        ]
-
-    def validate_price(self, value):
-        if value <= 0:
-            raise serializers.ValidationError("El precio debe ser mayor que 0.")
-        return value
-
-    def validate_promotion(self, value):
-        if value and not value.is_active:
-            raise serializers.ValidationError("La promoción seleccionada no está activa.")
-        return value
+    def get_categories(self, obj):
+        return [{'id': cat.id, 'name': cat.name} for cat in obj.categories.all()]
