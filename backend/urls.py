@@ -11,6 +11,7 @@ from drf_spectacular.views import (
 # API URLs
 api_patterns = [
     path('marketplace/', include('marketplace.urls')),
+    path('invoicing/', include('invoicing.urls')),
   
   
 ]
@@ -29,7 +30,7 @@ doc_patterns = [
 urlpatterns = [
     # Admin interface
     path('admin/', admin.site.urls),
-    path('api/invoicing/', include('invoicing.urls')),
+    
     # API endpoints
     path('api/', include(api_patterns)),
     
