@@ -93,6 +93,13 @@ class CustomerUser(AbstractUser):
     def get_total_amount(self):
         return self.invoice_set.aggregate(total=Sum('total_amount'))['total'] or 0
 
+from django.db import models
+from django.utils import timezone
+from django.utils.translation import gettext_lazy as _
+from django.conf import settings
+from django.core.mail import EmailMultiAlternatives
+from django.template.loader import render_to_string
+
 class Invoice(models.Model):
     INVOICE_STATUS = [
         ('BORRADOR', 'Borrador'),
@@ -118,7 +125,7 @@ class Invoice(models.Model):
         null=True,
         blank=True
     )
-    issue_date = models.DateTimeField(default=now)
+    issue_date = models.DateTimeField(default=timezone.now)
     due_date = models.DateTimeField(null=True, blank=True)
     status = models.CharField(
         max_length=20,
@@ -145,6 +152,65 @@ class Invoice(models.Model):
         ordering = ['-created_at']
         verbose_name = _("Invoice")
         verbose_name_plural = _("Invoices")
+
+    @classmethod
+    def generate_invoice_number(cls, company_id):
+        """
+        Genera un número de factura único para una empresa.
+        
+        Args:
+            company_id (int): ID de la empresa para la que se genera el número de factura.
+        
+        Returns:
+            str: Número de factura único.
+        """
+        try:
+            # Obtener la última factura para esta empresa
+            last_invoice = cls.objects.filter(
+                company_id=company_id
+            ).order_by('-id').first()
+
+            # Obtener el año actual
+            current_year = timezone.now().year
+
+            # Si no hay facturas previas, comenzar con 0001
+            if not last_invoice:
+                return f"{current_year}-0001"
+
+            # Extraer el último número de la factura previa
+            try:
+                last_number = int(last_invoice.invoice_number.split('-')[-1])
+            except (ValueError, IndexError):
+                last_number = 0
+
+            # Generar un nuevo número
+            new_number = f"{current_year}-{last_number + 1:04d}"
+
+            # Verificar unicidad
+            counter = 1
+            while cls.objects.filter(
+                invoice_number=new_number, 
+                company_id=company_id
+            ).exists():
+                new_number = f"{current_year}-{last_number + counter:04d}"
+                counter += 1
+
+            return new_number
+
+        except Exception as e:
+            # Loguear el error si es necesario
+            raise ValueError(f"No se pudo generar un número de factura único: {str(e)}")
+
+    @classmethod
+    def generate_internal_id(cls, company_id):
+        """Genera un ID interno único para la factura basado en la empresa."""
+        last_invoice = cls.objects.filter(company_id=company_id).order_by('-internal_id').first()
+        if last_invoice and last_invoice.internal_id:
+            last_number = int(last_invoice.internal_id.split('-')[-1])
+            new_number = last_number + 1
+        else:
+            new_number = 1
+        return f"INV-{company_id}-{new_number:06d}"
 
     def calculate_totals(self):
         """Calcula subtotal y total de la factura."""
@@ -184,19 +250,9 @@ class Invoice(models.Model):
         
         msg.send()
 
-    @classmethod
-    def generate_internal_id(cls, company_id):
-        """Genera un ID interno único para la factura basado en la empresa."""
-        last_invoice = cls.objects.filter(company_id=company_id).order_by('-internal_id').first()
-        if last_invoice and last_invoice.internal_id:
-            last_number = int(last_invoice.internal_id.split('-')[-1])
-            new_number = last_number + 1
-        else:
-            new_number = 1
-        return f"INV-{company_id}-{new_number:06d}"
-
     def __str__(self):
         return f"Factura {self.invoice_number} - {self.customer.get_full_name()}"
+    
 
 class InvoiceItem(models.Model):
     invoice = models.ForeignKey(
