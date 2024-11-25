@@ -1,35 +1,98 @@
 # models.py
+from django.contrib.auth.models import AbstractUser, BaseUserManager
 from django.db import models
+from django.utils.translation import gettext_lazy as _
 from django.core.validators import MinValueValidator
-from django.contrib.auth.models import AbstractUser
+
 from django.db.models import Sum, Count
 from django.utils.timezone import now
-from django.utils.translation import gettext_lazy as _
+
 from django.core.mail import EmailMultiAlternatives
 from django.template.loader import render_to_string
 from django.conf import settings
 
+class CustomerUserManager(BaseUserManager):
+    def create_user(self, email, password=None, **extra_fields):
+        if not email:
+            raise ValueError('Users must have an email address')
+        email = self.normalize_email(email)
+        user = self.model(email=email, **extra_fields)
+        user.set_password(password)
+        user.save(using=self._db)
+        return user
+
+    def create_superuser(self, email, password=None, **extra_fields):
+        extra_fields.setdefault('is_staff', True)
+        extra_fields.setdefault('is_superuser', True)
+        extra_fields.setdefault('is_active', True)
+
+        if extra_fields.get('is_staff') is not True:
+            raise ValueError('Superuser must have is_staff=True.')
+        if extra_fields.get('is_superuser') is not True:
+            raise ValueError('Superuser must have is_superuser=True.')
+
+        return self.create_user(email, password, **extra_fields)
+
 class CustomerUser(AbstractUser):
-    IDENTIFICATION_TYPES = [
+    username = models.CharField(
+        _('username'),
+        max_length=150,
+        blank=True,
+        null=True,
+        unique=False
+    )
+    
+    email = models.EmailField(
+        _('email address'), 
+        unique=True
+    )
+    
+    identification_choices = [
         ('CC', 'Cédula de Ciudadanía'),
-        ('NIT', 'Número de Identificación Tributaria'),
-        ('RUT', 'Registro Único Tributario')
+        ('CE', 'Cédula de Extranjería'),
+        ('PS', 'Pasaporte'),
+        ('NIT', 'NIT'),
     ]
     
     identification_type = models.CharField(
-        max_length=10,
-        choices=IDENTIFICATION_TYPES,
-        null=True
+        max_length=3,
+        choices=identification_choices,
+        verbose_name=_('Tipo de Identificación')
     )
-    identification_number = models.CharField(max_length=50, unique=True, null=True)
-    phone_number = models.CharField(max_length=20, null=True, blank=True)
     
+    identification_number = models.CharField(
+        max_length=20,
+        verbose_name=_('Número de Identificación')
+    )
+    
+    phone_number = models.CharField(
+        max_length=15,
+        verbose_name=_('Número de Teléfono'),
+        blank=True
+    )
+
+    objects = CustomerUserManager()
+
+    USERNAME_FIELD = 'email'
+    REQUIRED_FIELDS = ['identification_type', 'identification_number']
+
     class Meta:
-        verbose_name = _("Customer")
-        verbose_name_plural = _("Customers")
+        verbose_name = _('Cliente Usuario')
+        verbose_name_plural = _('Clientes Usuarios')
 
     def __str__(self):
-        return f"{self.get_full_name()} - {self.identification_number}"
+        return self.email
+
+    def save(self, *args, **kwargs):
+        if not self.username:
+            self.username = self.email.split('@')[0]
+        super().save(*args, **kwargs)
+
+    def get_total_invoices(self):
+        return self.invoice_set.count()  # Asumiendo que tienes una relación con Invoice
+
+    def get_total_amount(self):
+        return self.invoice_set.aggregate(total=Sum('total_amount'))['total'] or 0
 
 class Invoice(models.Model):
     INVOICE_STATUS = [
