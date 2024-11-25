@@ -1,76 +1,72 @@
 from django.contrib import admin
 from django.utils.html import format_html
-from django.db.models import Sum
 from django.urls import reverse
-from django.utils.safestring import mark_safe
-from .models import Invoice, InvoiceItem, TaxItem
+from django.db.models import Sum
+from .models import CustomerUser, Invoice, InvoiceItem
+
+@admin.register(CustomerUser)
+class CustomerUserAdmin(admin.ModelAdmin):
+    list_display = ('get_full_name', 'email', 'identification_type', 
+                   'identification_number', 'phone_number', 'is_active')
+    list_filter = ('is_active', 'identification_type', 'date_joined')
+    search_fields = ('email', 'first_name', 'last_name', 'identification_number')
+    ordering = ('-date_joined',)
+    
+    fieldsets = (
+        (None, {
+            'fields': ('email', 'password')
+        }),
+        ('Información Personal', {
+            'fields': ('first_name', 'last_name', 'identification_type',
+                      'identification_number', 'phone_number')
+        }),
+        ('Permisos', {
+            'fields': ('is_active', 'is_staff', 'is_superuser', 'groups', 'user_permissions')
+        }),
+        ('Fechas Importantes', {
+            'fields': ('last_login', 'date_joined')
+        }),
+    )
 
 class InvoiceItemInline(admin.TabularInline):
     model = InvoiceItem
     extra = 1
     readonly_fields = ('total',)
     autocomplete_fields = ['product']
-    fields = ('product', 'quantity', 'unit_price', 'total', 'description')
-
-class TaxItemInline(admin.TabularInline):
-    model = TaxItem
-    extra = 1
-    readonly_fields = ('amount',)
-    fields = ('tax_type', 'percentage', 'amount')
 
 @admin.register(Invoice)
 class InvoiceAdmin(admin.ModelAdmin):
-    list_display = ('invoice_number', 'internal_id', 'company', 'customer_name', 
-                   'formatted_total', 'status', 'issue_date', 'due_date')
-    list_filter = ('status', 'company', 'issue_date', 'customer_identification_type')
-    search_fields = ('invoice_number', 'internal_id', 'customer_name', 
-                    'customer_email', 'customer_identification_number')
-    readonly_fields = ('invoice_number', 'internal_id', 'created_at', 'updated_at',
-                      'subtotal', 'total')
-    inlines = [InvoiceItemInline, TaxItemInline]
-    date_hierarchy = 'issue_date'
-    ordering = ('-issue_date',)
-
+    list_display = ('invoice_number', 'company', 'get_customer_name', 
+                   'issue_date', 'due_date', 'total', 'status', 'created_at')
+    list_filter = ('status', 'company', 'issue_date', 'created_at')
+    search_fields = ('invoice_number', 'internal_id', 'customer__first_name', 
+                    'customer__last_name', 'customer__email')
+    readonly_fields = ('invoice_number', 'internal_id', 'subtotal', 'total', 
+                      'created_at', 'updated_at')
+    ordering = ('-created_at',)
+    inlines = [InvoiceItemInline]
+    
     fieldsets = (
-        ('Información de Factura', {
-            'fields': (('invoice_number', 'internal_id'), 
-                      'company', 
-                      'status',
-                      ('issue_date', 'due_date'))
-        }),
-        ('Información del Cliente', {
-            'fields': ('customer_name', 
-                      'customer_email',
-                      ('customer_identification_type', 'customer_identification_number'))
+        ('Información Básica', {
+            'fields': ('company', 'customer', 'invoice_number', 'internal_id',
+                      'issue_date', 'due_date', 'status')
         }),
         ('Totales', {
-            'fields': (('subtotal', 'total'),)
+            'fields': ('subtotal', 'total')
         }),
         ('Notas', {
-            'fields': ('notes',),
-            'classes': ('collapse',)
+            'fields': ('notes',)
         }),
         ('Información del Sistema', {
-            'fields': (('created_at', 'updated_at'),),
+            'fields': ('created_at', 'updated_at'),
             'classes': ('collapse',)
-        })
+        }),
     )
 
-    def formatted_total(self, obj):
-        try:
-            # Asegurarse de que `obj.total` es numérico antes de formatear
-            total = float(obj.total)
-            return format_html('<b>${:,.2f}</b>', total)
-        except (TypeError, ValueError):
-            # Retorna un mensaje o un valor vacío si `total` no es válido
-            return format_html('<b>-</b>')
-    formatted_total.short_description = 'Total'
-    formatted_total.admin_order_field = 'total'
-
-    def save_model(self, request, obj, form, change):
-        if not change:  # Si es una nueva factura
-            obj.internal_id = Invoice.generate_internal_id(obj.company_id)
-        super().save_model(request, obj, form, change)
+    def get_customer_name(self, obj):
+        return obj.customer.get_full_name()
+    get_customer_name.short_description = 'Cliente'
+    get_customer_name.admin_order_field = 'customer__first_name'
 
     def get_queryset(self, request):
         qs = super().get_queryset(request)
@@ -78,44 +74,32 @@ class InvoiceAdmin(admin.ModelAdmin):
             return qs.filter(company__user=request.user)
         return qs
 
-    def has_change_permission(self, request, obj=None):
-        if obj and obj.status in ['PAGADA', 'ANULADA']:
-            return False
-        return super().has_change_permission(request, obj)
+    def get_readonly_fields(self, request, obj=None):
+        if obj and obj.status != 'BORRADOR':  # Si la factura ya existe y no está en borrador
+            return self.readonly_fields + ('company', 'customer', 'status')
+        return self.readonly_fields
 
-    def has_delete_permission(self, request, obj=None):
-        if obj and obj.status in ['PAGADA', 'ANULADA']:
-            return False
-        return super().has_delete_permission(request, obj)
-
-    class Media:
-        css = {
-            'all': ('css/admin/invoice.css',)
-        }
-        js = ('js/admin/invoice.js',)
+    def save_model(self, request, obj, form, change):
+        if not change:  # Si es una nueva factura
+            if not obj.internal_id:
+                obj.internal_id = Invoice.generate_internal_id(obj.company_id)
+        super().save_model(request, obj, form, change)
 
 @admin.register(InvoiceItem)
 class InvoiceItemAdmin(admin.ModelAdmin):
-    list_display = ('invoice_link', 'product', 'quantity', 'unit_price', 'total')
+    list_display = ('invoice', 'product', 'quantity', 'unit_price', 'total')
     list_filter = ('invoice__status', 'product')
     search_fields = ('invoice__invoice_number', 'product__name')
     readonly_fields = ('total',)
     autocomplete_fields = ['invoice', 'product']
 
-    def invoice_link(self, obj):
-        url = reverse('admin:app_invoice_change', args=[obj.invoice.id])
-        return mark_safe(f'<a href="{url}">{obj.invoice}</a>')
-    invoice_link.short_description = 'Factura'
+    def get_queryset(self, request):
+        qs = super().get_queryset(request)
+        if not request.user.is_superuser:
+            return qs.filter(invoice__company__user=request.user)
+        return qs
 
-@admin.register(TaxItem)
-class TaxItemAdmin(admin.ModelAdmin):
-    list_display = ('invoice_link', 'tax_type', 'percentage', 'amount')
-    list_filter = ('tax_type', 'invoice__status')
-    search_fields = ('invoice__invoice_number',)
-    readonly_fields = ('amount',)
-    autocomplete_fields = ['invoice']
-
-    def invoice_link(self, obj):
-        url = reverse('admin:app_invoice_change', args=[obj.invoice.id])
-        return mark_safe(f'<a href="{url}">{obj.invoice}</a>')
-    invoice_link.short_description = 'Factura'
+    def formfield_for_foreignkey(self, db_field, request, **kwargs):
+        if db_field.name == "invoice" and not request.user.is_superuser:
+            kwargs["queryset"] = Invoice.objects.filter(company__user=request.user)
+        return super().formfield_for_foreignkey(db_field, request, **kwargs)

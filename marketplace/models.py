@@ -1,6 +1,6 @@
 # models.py
 from django.db import models
-from django.contrib.auth.models import User
+from django.conf import settings  # Cambiado: importamos settings en lugar de User directamente
 from cloudinary.models import CloudinaryField
 from django.core.validators import MinValueValidator, MaxValueValidator
 
@@ -26,7 +26,8 @@ class BusinessHours(models.Model):
         ordering = ['day']
 
 class Company(models.Model):
-    user = models.ForeignKey(User, on_delete=models.CASCADE)
+    # Cambiado: referencia al modelo de usuario usando settings.AUTH_USER_MODEL
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
     name = models.CharField(max_length=100)
     description = models.TextField()
     nit = models.CharField(max_length=20, null=True, blank=True, help_text="Número de Identificación Tributaria")

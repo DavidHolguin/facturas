@@ -11,7 +11,7 @@ from drf_spectacular.views import (
 # API URLs
 api_patterns = [
     path('marketplace/', include('marketplace.urls')),
-    path('chatbots/', include('chatbots.urls')),
+  
     path('auth/', include('authentication.urls')),  # Cambiado para mejor organización
 ]
 

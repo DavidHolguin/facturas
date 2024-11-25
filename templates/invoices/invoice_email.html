@@ -1,0 +1,68 @@
+# templates/invoices/invoice_email.html
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <style>
+        body { font-family: Arial, sans-serif; }
+        .invoice-header { background: #f8f9fa; padding: 20px; }
+        .invoice-details { margin: 20px 0; }
+        .items-table { width: 100%; border-collapse: collapse; }
+        .items-table th, .items-table td { 
+            border: 1px solid #ddd; 
+            padding: 8px; 
+            text-align: left; 
+        }
+        .items-table th { background: #f8f9fa; }
+        .total-section { margin-top: 20px; text-align: right; }
+    </style>
+</head>
+<body>
+    <div class="invoice-header">
+        <h2>Factura #{{ invoice.invoice_number }}</h2>
+        <p>Fecha: {{ invoice.issue_date|date:"d/m/Y" }}</p>
+    </div>
+
+    <div class="invoice-details">
+        <h3>Detalles del Cliente</h3>
+        <p>Nombre: {{ customer.get_full_name }}</p>
+        <p>Email: {{ customer.email }}</p>
+        <p>Identificación: {{ customer.get_identification_type_display }} {{ customer.identification_number }}</p>
+        {% if customer.phone_number %}
+        <p>Teléfono: {{ customer.phone_number }}</p>
+        {% endif %}
+    </div>
+
+    <table class="items-table">
+        <thead>
+            <tr>
+                <th>Producto</th>
+                <th>Cantidad</th>
+                <th>Precio Unitario</th>
+                <th>Total</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for item in items %}
+            <tr>
+                <td>{{ item.product.name }}</td>
+                <td>{{ item.quantity }}</td>
+                <td>${{ item.unit_price|floatformat:2 }}</td>
+                <td>${{ item.total|floatformat:2 }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+    <div class="total-section">
+        <h3>Resumen</h3>
+        <p>Subtotal: ${{ invoice.subtotal|floatformat:2 }}</p>
+        <p><strong>Total: ${{ invoice.total|floatformat:2 }}</strong></p>
+    </div>
+
+    <div class="footer">
+        <p>Gracias por su compra</p>
+        <p>Para cualquier consulta, por favor contáctenos a {{ admin_email }}</p>
+    </div>
+</body>
+</html>

@@ -35,7 +35,7 @@ INSTALLED_APPS = [
     'invoicing',
     'authentication',
     'marketplace',
-    'chatbots',
+    
 ]
 
 MIDDLEWARE = [
@@ -141,6 +141,16 @@ REST_FRAMEWORK = {
     'DEFAULT_SCHEMA_CLASS': 'drf_spectacular.openapi.AutoSchema',
 }
 
+# Email settings
+EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
+EMAIL_HOST = 'smtp.gmail.com'  # O tu servidor SMTP
+EMAIL_PORT = 587
+EMAIL_USE_TLS = True
+EMAIL_HOST_USER = 'yo@cristianholguin.com'  # Reemplazar con tu email
+EMAIL_HOST_PASSWORD = 'Ceo@cloudming.c0'  # Reemplazar con tu contraseña
+DEFAULT_FROM_EMAIL = 'yo@cristianholguin.com'
+ADMIN_EMAIL = 'carniceria@cristianholguin.com'  # Email del administrador
+
 # API Documentation Configuration
 SPECTACULAR_SETTINGS = {
     'TITLE': 'Facturas PWA',
@@ -186,3 +196,5 @@ if os.environ.get('DJANGO_ENV') == 'production':
 
 # Configure Django-Heroku
 django_heroku.settings(locals(), staticfiles=False)
+
+AUTH_USER_MODEL = 'invoicing.CustomerUser'
