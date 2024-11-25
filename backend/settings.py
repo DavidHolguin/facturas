@@ -129,6 +129,7 @@ CORS_ALLOW_HEADERS = [
     'x-requested-with',
 ]
 
+# settings.py
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': [
         'rest_framework.authentication.TokenAuthentication',
@@ -137,8 +138,9 @@ REST_FRAMEWORK = {
     'DEFAULT_PERMISSION_CLASSES': [
         'rest_framework.permissions.IsAuthenticated',
     ],
+    'UNAUTHENTICATED_USER': None,
     'DEFAULT_SCHEMA_CLASS': 'drf_spectacular.openapi.AutoSchema',
-    'NON_FIELD_ERRORS_KEY': 'error',  # Para manejar errores generales como los espera el frontend
+    'NON_FIELD_ERRORS_KEY': 'error',
 }
 
 # Email settings
