@@ -115,10 +115,16 @@ class InvoiceAdmin(admin.ModelAdmin):
 
     def save_model(self, request, obj, form, change):
         if not change:  # Si es una nueva factura
+            # Generate invoice_number if it's not set
+            if not obj.invoice_number:
+                obj.invoice_number = Invoice.generate_invoice_number(obj.company_id)
+            
+            # Generate internal_id if it's not set
             if not obj.internal_id:
                 obj.internal_id = Invoice.generate_internal_id(obj.company_id)
+        
         super().save_model(request, obj, form, change)
-
+        
 @admin.register(InvoiceItem)
 class InvoiceItemAdmin(admin.ModelAdmin):
     list_display = ('invoice', 'product', 'quantity', 'unit_price', 'total')
