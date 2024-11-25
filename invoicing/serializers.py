@@ -91,3 +91,7 @@ class InvoiceSerializer(serializers.ModelSerializer):
         invoice.calculate_totals()
         invoice.send_invoice_email()
         return invoice
+    
+class LoginSerializer(serializers.Serializer):
+    email = serializers.EmailField()
+    password = serializers.CharField(style={'input_type': 'password'})

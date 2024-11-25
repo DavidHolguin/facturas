@@ -17,6 +17,36 @@ from reportlab.lib import colors
 import io
 import logging
 
+from rest_framework.views import APIView
+from rest_framework.authtoken.models import Token
+from django.contrib.auth import authenticate
+from .serializers import LoginSerializer
+
+class LoginView(APIView):
+    permission_classes = []  # Permite acceso sin autenticación
+    
+    def post(self, request):
+        serializer = LoginSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        
+        user = authenticate(
+            email=serializer.validated_data['email'],
+            password=serializer.validated_data['password']
+        )
+        
+        if not user:
+            return Response(
+                {'error': 'Credenciales inválidas'},
+                status=status.HTTP_401_UNAUTHORIZED
+            )
+            
+        token, _ = Token.objects.get_or_create(user=user)
+        
+        return Response({
+            'token': token.key,
+            'user': CustomerUserSerializer(user).data
+        })
+
 logger = logging.getLogger(__name__)
 
 class CustomerUserViewSet(viewsets.ModelViewSet):

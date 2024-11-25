@@ -12,7 +12,7 @@ from drf_spectacular.views import (
 api_patterns = [
     path('marketplace/', include('marketplace.urls')),
   
-    path('auth/', include('authentication.urls')),  # Cambiado para mejor organización
+  
 ]
 
 # Documentation URLs

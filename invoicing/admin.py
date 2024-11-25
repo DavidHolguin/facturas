@@ -4,29 +4,63 @@ from django.urls import reverse
 from django.db.models import Sum
 from .models import CustomerUser, Invoice, InvoiceItem
 
+
+from django.contrib.auth.admin import UserAdmin
+from django.utils.translation import gettext_lazy as _
+from .models import CustomerUser
+
 @admin.register(CustomerUser)
-class CustomerUserAdmin(admin.ModelAdmin):
-    list_display = ('get_full_name', 'email', 'identification_type', 
-                   'identification_number', 'phone_number', 'is_active')
-    list_filter = ('is_active', 'identification_type', 'date_joined')
+class CustomerUserAdmin(UserAdmin):
+    list_display = ('email', 'first_name', 'last_name', 'identification_number', 'is_active', 'is_staff')
+    list_filter = ('is_active', 'is_staff', 'identification_type')
     search_fields = ('email', 'first_name', 'last_name', 'identification_number')
-    ordering = ('-date_joined',)
+    ordering = ('email',)
     
     fieldsets = (
+        (None, {'fields': ('email', 'password')}),
+        (_('Personal info'), {
+            'fields': (
+                'first_name',
+                'last_name',
+                'identification_type',
+                'identification_number',
+                'phone_number',
+            )
+        }),
+        (_('Permissions'), {
+            'fields': (
+                'is_active',
+                'is_staff',
+                'is_superuser',
+                'groups',
+                'user_permissions',
+            )
+        }),
+        (_('Important dates'), {'fields': ('last_login', 'date_joined')}),
+    )
+    
+    add_fieldsets = (
         (None, {
-            'fields': ('email', 'password')
-        }),
-        ('Información Personal', {
-            'fields': ('first_name', 'last_name', 'identification_type',
-                      'identification_number', 'phone_number')
-        }),
-        ('Permisos', {
-            'fields': ('is_active', 'is_staff', 'is_superuser', 'groups', 'user_permissions')
-        }),
-        ('Fechas Importantes', {
-            'fields': ('last_login', 'date_joined')
+            'classes': ('wide',),
+            'fields': (
+                'email',
+                'password1',
+                'password2',
+                'first_name',
+                'last_name',
+                'identification_type',
+                'identification_number',
+                'phone_number',
+                'is_staff',
+                'is_active',
+            ),
         }),
     )
+
+    def get_fieldsets(self, request, obj=None):
+        if not obj:
+            return self.add_fieldsets
+        return super().get_fieldsets(request, obj)
 
 class InvoiceItemInline(admin.TabularInline):
     model = InvoiceItem
