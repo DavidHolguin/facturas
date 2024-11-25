@@ -3,15 +3,22 @@ from pathlib import Path
 import django_heroku
 import dj_database_url
 from decouple import config
+import cloudinary
+import cloudinary.uploader
+import cloudinary.api
 
-SECRET_KEY = config('SECRET_KEY')
-
+# Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
+# SECURITY WARNING: keep the secret key used in production secret!
+SECRET_KEY = config('SECRET_KEY')
+
+# SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = os.environ.get('DJANGO_ENV') != 'production'
 
 ALLOWED_HOSTS = ['*']
 
+# Application definition
 INSTALLED_APPS = [
     'django.contrib.admin',
     'django.contrib.auth',
@@ -22,11 +29,11 @@ INSTALLED_APPS = [
     'rest_framework',
     'rest_framework.authtoken',
     'corsheaders',
-    'drf_spectacular', 
-    'invoicing',
-    'cloudinary',
-    'authentication',
+    'drf_spectacular',
     'cloudinary_storage',
+    'cloudinary',
+    'invoicing',
+    'authentication',
     'marketplace',
     'chatbots',
 ]
@@ -63,10 +70,15 @@ TEMPLATES = [
 
 WSGI_APPLICATION = 'backend.wsgi.application'
 
+# Database
 DATABASES = {
-    'default': dj_database_url.config(conn_max_age=600, default='sqlite:///'+os.path.join(BASE_DIR, 'db.sqlite3'))
+    'default': dj_database_url.config(
+        conn_max_age=600,
+        default='sqlite:///' + os.path.join(BASE_DIR, 'db.sqlite3')
+    )
 }
 
+# Password validation
 AUTH_PASSWORD_VALIDATORS = [
     {
         'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator',
@@ -82,23 +94,20 @@ AUTH_PASSWORD_VALIDATORS = [
     },
 ]
 
+# Internationalization
 LANGUAGE_CODE = 'es-es'
-
 TIME_ZONE = 'UTC'
-
 USE_I18N = True
-
 USE_TZ = True
 
+# CORS Configuration
 CORS_ALLOW_ALL_ORIGINS = False
-
 CORS_ALLOWED_ORIGINS = [
     'https://arres.vercel.app',
     'http://localhost:3000',
 ]
 CORS_ALLOW_CREDENTIALS = True
 
-# Configuración adicional de CORS si es necesaria
 CORS_ALLOW_METHODS = [
     'DELETE',
     'GET',
@@ -120,6 +129,7 @@ CORS_ALLOW_HEADERS = [
     'x-requested-with',
 ]
 
+# REST Framework Configuration
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': [
         'rest_framework.authentication.TokenAuthentication',
@@ -128,9 +138,10 @@ REST_FRAMEWORK = {
     'DEFAULT_PERMISSION_CLASSES': [
         'rest_framework.permissions.AllowAny',
     ],
-    'DEFAULT_SCHEMA_CLASS': 'drf_spectacular.openapi.AutoSchema',  # Add this line
+    'DEFAULT_SCHEMA_CLASS': 'drf_spectacular.openapi.AutoSchema',
 }
 
+# API Documentation Configuration
 SPECTACULAR_SETTINGS = {
     'TITLE': 'Facturas PWA',
     'DESCRIPTION': 'Documentación de la API para el Facturas Arres',
@@ -138,7 +149,7 @@ SPECTACULAR_SETTINGS = {
     'SERVE_INCLUDE_SCHEMA': False,
 }
 
-# Configuración de archivos estáticos
+# Static files configuration
 STATIC_URL = '/static/'
 STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
 STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
@@ -146,24 +157,32 @@ STATICFILES_DIRS = [
     os.path.join(BASE_DIR, 'static'),
 ]
 
-# Configuración de Cloudinary
+# Cloudinary Configuration
 CLOUDINARY_STORAGE = {
-    'CLOUD_NAME': config('CLOUDINARY_CLOUD_NAME'),
-    'API_KEY': config('CLOUDINARY_API_KEY'),
-    'API_SECRET': config('CLOUDINARY_API_SECRET'),
+    'CLOUD_NAME': config('CLOUDINARY_CLOUD_NAME', default='dxxm85wvl'),
+    'API_KEY': config('CLOUDINARY_API_KEY', default='845153693396115'),
+    'API_SECRET': config('CLOUDINARY_API_SECRET', default='8M6PvjjQCIsRKWpKVt3IxKbcNoI'),
 }
 
+# Initialize Cloudinary
+cloudinary.config(
+    cloud_name=CLOUDINARY_STORAGE['CLOUD_NAME'],
+    api_key=CLOUDINARY_STORAGE['API_KEY'],
+    api_secret=CLOUDINARY_STORAGE['API_SECRET'],
+    secure=True
+)
+
+# Media files configuration
 DEFAULT_FILE_STORAGE = 'cloudinary_storage.storage.MediaCloudinaryStorage'
-
 MEDIA_URL = '/media/'
+MEDIA_ROOT = BASE_DIR / 'media'
 
-
-
-# Asegúrate de que DEBUG sea False en producción
+# Production Settings
 if os.environ.get('DJANGO_ENV') == 'production':
     DEBUG = False
     SECURE_SSL_REDIRECT = True
     SESSION_COOKIE_SECURE = True
     CSRF_COOKIE_SECURE = True
 
+# Configure Django-Heroku
 django_heroku.settings(locals(), staticfiles=False)
