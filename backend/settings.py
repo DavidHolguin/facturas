@@ -14,7 +14,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 SECRET_KEY = config('SECRET_KEY')
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = os.environ.get('DJANGO_ENV') != 'production'
+DEBUG = False
 
 ALLOWED_HOSTS = ['*']
 
@@ -39,8 +39,8 @@ INSTALLED_APPS = [
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
     'whitenoise.middleware.WhiteNoiseMiddleware',
+    'corsheaders.middleware.CorsMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
-    'corsheaders.middleware.CorsMiddleware',  # Asegúrate de que esté antes de CommonMiddleware
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
@@ -98,12 +98,14 @@ TIME_ZONE = 'UTC'
 USE_I18N = True
 USE_TZ = True
 
-# CORS Configuration - Modificado para permitir localhost
-CORS_ALLOW_ALL_ORIGINS = True  # Cambiado a True para desarrollo
+# CORS Configuration Optimizada
+CORS_ALLOW_ALL_ORIGINS = True
+
 CORS_ALLOWED_ORIGINS = [
     'https://arres.vercel.app',
     'http://localhost:3000',
     'http://127.0.0.1:3000',
+    'https://facturaspwa-954cb3785e4a.herokuapp.com',
 ]
 
 CORS_ALLOW_CREDENTIALS = True
@@ -127,7 +129,12 @@ CORS_ALLOW_HEADERS = [
     'user-agent',
     'x-csrftoken',
     'x-requested-with',
+    'access-control-allow-origin',
+    'access-control-allow-credentials',
 ]
+
+CORS_EXPOSE_HEADERS = ['Content-Type', 'X-CSRFToken']
+CORS_PREFLIGHT_MAX_AGE = 86400
 
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': [
