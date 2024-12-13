@@ -33,16 +33,14 @@ INSTALLED_APPS = [
     'cloudinary_storage',
     'cloudinary',
     'invoicing',
-   
     'marketplace',
-    
 ]
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
     'whitenoise.middleware.WhiteNoiseMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
-    'corsheaders.middleware.CorsMiddleware',
+    'corsheaders.middleware.CorsMiddleware',  # Asegúrate de que esté antes de CommonMiddleware
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
@@ -100,12 +98,14 @@ TIME_ZONE = 'UTC'
 USE_I18N = True
 USE_TZ = True
 
-# CORS Configuration
-CORS_ALLOW_ALL_ORIGINS = False
+# CORS Configuration - Modificado para permitir localhost
+CORS_ALLOW_ALL_ORIGINS = True  # Cambiado a True para desarrollo
 CORS_ALLOWED_ORIGINS = [
     'https://arres.vercel.app',
     'http://localhost:3000',
+    'http://127.0.0.1:3000',
 ]
+
 CORS_ALLOW_CREDENTIALS = True
 
 CORS_ALLOW_METHODS = [
@@ -134,20 +134,17 @@ REST_FRAMEWORK = {
         'rest_framework.authentication.TokenAuthentication',
     ],
     'DEFAULT_SCHEMA_CLASS': 'drf_spectacular.openapi.AutoSchema',
-    'DEFAULT_AUTHENTICATION_CLASSES': [
-        'rest_framework.authentication.TokenAuthentication',
-    ],
 }
 
 # Email settings
 EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
-EMAIL_HOST = 'smtp.gmail.com'  # O tu servidor SMTP
+EMAIL_HOST = 'smtp.gmail.com'
 EMAIL_PORT = 587
 EMAIL_USE_TLS = True
-EMAIL_HOST_USER = 'yo@cristianholguin.com'  # Reemplazar con tu email
-EMAIL_HOST_PASSWORD = 'Ceo@cloudming.c0'  # Reemplazar con tu contraseña
+EMAIL_HOST_USER = 'yo@cristianholguin.com'
+EMAIL_HOST_PASSWORD = 'Ceo@cloudming.c0'
 DEFAULT_FROM_EMAIL = 'yo@cristianholguin.com'
-ADMIN_EMAIL = 'carniceria@cristianholguin.com'  # Email del administrador
+ADMIN_EMAIL = 'carniceria@cristianholguin.com'
 
 # API Documentation Configuration
 SPECTACULAR_SETTINGS = {
@@ -184,7 +181,6 @@ cloudinary.config(
 DEFAULT_FILE_STORAGE = 'cloudinary_storage.storage.MediaCloudinaryStorage'
 MEDIA_URL = '/media/'
 MEDIA_ROOT = BASE_DIR / 'media'
-
 
 # Configure Django-Heroku
 django_heroku.settings(locals(), staticfiles=False)
